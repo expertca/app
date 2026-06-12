@@ -1,0 +1,171 @@
+/* Material Design Variables */
+:root {
+    --primary: #1976D2; /* Standard Android Blue */
+    --primary-dark: #1565C0;
+    --bg-color: #F5F5F6; /* Android default background */
+    --surface: #FFFFFF;
+    --text-high-emphasis: rgba(0, 0, 0, 0.87);
+    --text-medium-emphasis: rgba(0, 0, 0, 0.60);
+    --divider: rgba(0, 0, 0, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent; /* Remove default blue tap */
+}
+
+body {
+    font-family: 'Roboto', sans-serif; /* Android's native font */
+    background-color: var(--bg-color);
+    color: var(--text-high-emphasis);
+}
+
+/* Material Top App Bar */
+.app-bar {
+    background-color: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 64px; /* Standard Material height */
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.20); /* Material Elevation 4dp */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.menu-icon {
+    margin-right: 24px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.app-bar-title h1 {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+}
+
+.app-bar-title p {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Layout */
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (min-width: 600px) {
+    .grid-container {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+}
+
+/* Material Card */
+.tool-card {
+    background-color: var(--surface);
+    border-radius: 12px; /* Material 3 style rounding */
+    padding: 16px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.14), 0 2px 1px -2px rgba(0,0,0,0.12), 0 1px 3px 0 rgba(0,0,0,0.20); /* Material Elevation 1dp */
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Android Touch Feedback */
+.tool-card:active {
+    background-color: #E0E0E0; /* Simulates Android Ripple */
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.20); /* Elevate on press */
+}
+
+/* Icon next to text */
+.tool-icon {
+    color: var(--primary);
+    font-size: 32px !important;
+    margin-right: 16px;
+    background: rgba(25, 118, 210, 0.1); /* Light circle behind icon */
+    padding: 8px;
+    border-radius: 50%;
+}
+
+.tool-text h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    letter-spacing: 0.15px;
+}
+
+.tool-text p {
+    color: var(--text-medium-emphasis);
+    font-size: 14px;
+    letter-spacing: 0.25px;
+}
+
+/* --- Modern Floating Pill Search Bar --- */
+.search-container {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    /* Optional: Makes the search bar stick to the top when scrolling */
+    position: sticky; 
+    top: 64px; /* Sits right below your App Bar */
+    z-index: 5;
+    /* Add a subtle background gradient to blend the sticky scroll */
+    background: linear-gradient(180deg, var(--bg-color) 70%, transparent 100%);
+}
+
+#search-bar {
+    width: 100%;
+    padding: 16px 20px 16px 52px;
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ultra-light border */
+    border-radius: 32px; /* Perfectly round edges */
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    background-color: var(--surface);
+    color: var(--text-high-emphasis);
+    /* Soft, diffused shadow for a floating effect */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); 
+    outline: none;
+    /* Smooth animation for the focus state */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+/* The state when the user taps the search bar */
+#search-bar:focus {
+    /* Larger, primary-tinted shadow */
+    box-shadow: 0 8px 24px rgba(25, 118, 210, 0.15); 
+    border-color: var(--primary);
+    transform: translateY(-2px); /* Physically lifts up slightly */
+}
+
+#search-bar::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.search-icon {
+    position: absolute;
+    left: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    /* Use the primary blue color for a pop of contrast */
+    color: var(--primary); 
+    pointer-events: none;
+    font-size: 22px;
+    transition: transform 0.3s ease;
+}
+
+/* Optional: Slight bounce to the icon when searching */
+#search-bar:focus ~ .search-icon {
+    transform: translateY(-50%) scale(1.1);
+}

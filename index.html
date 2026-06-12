@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Colors the Android status bar -->
+    <meta name="theme-color" content="#1976D2"> 
+    <title>ExpertCA | Tools</title>
+    
+    <!-- Material Design Font and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Material Top App Bar -->
+    <header class="app-bar">
+        <span class="material-icons menu-icon">menu</span>
+        <div class="app-bar-title">
+            <h1>ExpertCA</h1>
+            <p>Professional Tools</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="search-container">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" id="search-bar" placeholder="Search tools (e.g., Attendance, Tax)...">
+        </div>
+
+        <div id="tools-grid" class="grid-container"></div>
+    </main>
+
+    <script src="tools.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
