@@ -9,6 +9,6 @@ const tools = [
         name: 'ITR Billing',
         description: 'Quickly enables to bill ITR filings',
         html: 'itr-bills/index.html',
-        icon: 'calculate'
+        icon: 'receipt'
     },
 ];
