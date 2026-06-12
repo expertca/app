@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gridContainer.appendChild(cardLink);
         });
     }
+    if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => { console.log('SW registration failed'); }); }); }
 
     // Initial render of all tools
     renderTools(tools);
