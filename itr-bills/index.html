@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tax Billing App</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --whatsapp: #25D366;
+            --warning: #f59e0b;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; font-size: 14px; }
+        
+        /* Compact Header */
+        .header { background: var(--primary); color: white; height: 45px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .header h2 { font-size: 1.1rem; margin: 0; }
+        
+        .container { padding: 0.5rem; max-width: 600px; margin: 0 auto; }
+        
+        /* Compact Cards */
+        .card { background: var(--surface); padding: 1rem; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-bottom: 0.5rem; display: none; }
+        .card.active { display: block; }
+        
+        /* Compact Report Cards */
+        .report-card { display: block; padding: 0.6rem; position: relative; margin-bottom: 0.5rem; border-radius: 6px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-left: 4px solid var(--border); }
+        .report-card.pending { border-left-color: var(--warning); }
+        .report-card.cleared { border-left-color: var(--success); }
+        
+        .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem; }
+        .pc-name { font-weight: 700; font-size: 0.95rem; color: var(--text); line-height: 1.2; }
+        .pc-date { font-size: 0.7rem; color: #6b7280; font-weight: 500; }
+        
+        .pc-meta { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.4rem; margin-top: 0.2rem;}
+        .pc-badge { background: var(--bg); font-size: 0.7rem; padding: 2px 4px; border-radius: 4px; color: #4b5563; border: 1px solid var(--border); }
+        .pc-id { font-size: 0.6rem; color: #9ca3af; margin-bottom: 0.2rem; }
+
+        .finance-row { display: flex; justify-content: space-between; background: #f9fafb; padding: 0.4rem; border-radius: 6px; margin-bottom: 0.4rem; border: 1px solid var(--border); }
+        .fin-item { display: flex; flex-direction: column; text-align: center; flex: 1; }
+        .fin-item:not(:last-child) { border-right: 1px solid var(--border); }
+        .fin-label { color: #6b7280; font-weight: 500; font-size: 0.6rem; text-transform: uppercase; }
+        .fin-val { font-weight: 700; color: var(--text); font-size: 0.8rem; margin-top: 1px;}
+        .fin-val.err { color: var(--error); }
+        .fin-val.suc { color: var(--success); }
+        
+        /* Compact Form Inputs */
+        .form-group { margin-bottom: 0.75rem; }
+        label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.8rem; }
+        input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        
+        .checkbox-group { display: flex; gap: 1rem; align-items: center; margin-top: 0.25rem; }
+        .checkbox-label { display: flex; align-items: center; gap: 0.4rem; font-weight: normal; font-size: 0.85rem;}
+        
+        .btn { display: block; width: 100%; padding: 0.75rem; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-align: center; }
+        
+        .btn-row { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+        .btn-small { flex: 1; padding: 0.4rem; background: #e5e7eb; color: var(--text); border: none; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+        
+        .action-row { display: flex; gap: 0.4rem; }
+        .btn-pay { flex: 1; background: var(--success); color: white; border: none; padding: 0.4rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;}
+        .btn-whatsapp { flex: 1; background: var(--whatsapp); color: white; border: none; padding: 0.4rem; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem;}
+        
+        /* Compact Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; border-top: 1px solid var(--border); padding: 0.25rem; max-width: 600px; margin: 0 auto; z-index: 20; height: 50px; align-items: center;}
+        .nav-item { flex: 1; text-align: center; padding: 0.25rem; cursor: pointer; font-size: 0.85rem; color: #6b7280; font-weight: 500; }
+        .nav-item.active { color: var(--primary); }
+
+        input[readonly] { background-color: #f9fafb; font-weight: bold; }
+        
+        .loader { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); z-index: 50; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-direction: column; gap: 10px;}
+        .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .toast { visibility: hidden; min-width: 250px; max-width: 90%; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 12px; position: fixed; z-index: 1000; left: 50%; top: 10px; transform: translateX(-50%) translateY(-20px); font-size: 0.9rem; box-shadow: 0px 4px 12px rgba(0,0,0,0.15); opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s; font-weight: 500; }
+        .toast.show { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--error); }
+        
+        .empty-state { text-align: center; padding: 1.5rem; color: #6b7280; font-style: italic; font-size: 0.9rem;}
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; align-items: center; justify-content: center; padding: 1rem; }
+        .modal { background: white; padding: 1rem; border-radius: 8px; width: 100%; max-width: 320px; }
+        .btn-cancel { background: #e5e7eb; color: var(--text); margin-top: 0.5rem; }
+
+        /* Compact Sticky Filters */
+        .filter-wrapper { position: sticky; top: 45px; background: var(--bg); z-index: 10; padding-top: 0.4rem; padding-bottom: 0.4rem; margin-top: -0.5rem; border-bottom: 1px solid var(--border); }
+        .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+        .filter-full { grid-column: span 2; }
+        
+        /* Compact Totals Footer */
+        .totals-footer { position: fixed; bottom: 50px; left: 0; right: 0; max-width: 600px; margin: 0 auto; background: white; padding: 0.4rem 0.5rem; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); border-top: 1px solid var(--border); z-index: 15; }
+        #reportListContainer { padding-bottom: 50px; } 
+    </style>
+</head>
+<body>
+
+    <div id="toastNotification" class="toast"></div>
+
+    <div class="header">
+        <h2 id="pageTitle">New Billing</h2>
+    </div>
+
+    <div class="container">
+        
+        <div id="billingSection" class="card active">
+            <form id="billingForm">
+                <input type="hidden" id="billClientId" value="">
+
+                <div class="form-group">
+                    <label>Bill Date</label>
+                    <input type="date" id="billDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="billName" required placeholder="Type or select client..." list="clientSuggestions" onchange="autofillClientDetails()">
+                    <datalist id="clientSuggestions"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Client PAN</label>
+                    <input type="text" id="billPan" required placeholder="ABCDE1234F" style="text-transform: uppercase;" oninput="clearClientId()">
+                </div>
+                
+                <div class="form-group">
+                    <label>Assessment Year (AY)</label>
+                    <select id="billAY" required>
+                        <option value="">Loading years...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>File Type</label>
+                    <select id="billFileType" required>
+                        <option value="Original">Original</option>
+                        <option value="Revised">Revised</option>
+                        <option value="Updated">Updated</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Addons</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label"><input type="checkbox" id="addonPLBS" value="PLBS"> PLBS</label>
+                        <label class="checkbox-label"><input type="checkbox" id="addonProjPLBS" value="Projected PLBS"> Proj. PLBS</label>
+                    </div>
+                </div>
+                
+                <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--border);">
+
+                <div class="form-group">
+                    <label>Charges (₹)</label>
+                    <input type="number" id="billCharges" required placeholder="0" oninput="calculateBalance()">
+                </div>
+                
+                <div class="form-group">
+                    <div class="btn-row">
+                        <button type="button" class="btn-small" onclick="quickPay('unpaid')">Unpaid</button>
+                        <button type="button" class="btn-small" onclick="quickPay('full')">Full Payment</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Amount Paid (₹)</label>
+                    <input type="number" id="billPaid" required placeholder="0" oninput="calculateBalance()">
+                </div>
+
+                <div class="form-group">
+                    <label>Balance (₹)</label>
+                    <input type="number" id="billBalance" readonly placeholder="0">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <input type="text" id="billStatus" readonly placeholder="Unpaid">
+                </div>
+
+                <div class="form-group" id="paymentModeGroup" style="display: none;">
+                    <label>Payment Mode</label>
+                    <select id="billMode">
+                        <option value="UPI">UPI</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Remarks</label>
+                    <input type="text" id="billRemarks" placeholder="Optional notes...">
+                </div>
+
+                <button type="submit" class="btn" style="margin-top: 0.5rem;">Save Bill</button>
+            </form>
+        </div>
+
+        <div id="clientSection" class="card">
+            <form id="clientForm">
+                <div class="form-group">
+                    <label>Client Name</label>
+                    <input type="text" id="clientName" required placeholder="Type to search or add new..." list="clientSuggestions" onchange="autofillEditForm()">
+                </div>
+                <div class="form-group">
+                    <label>PAN Number</label>
+                    <input type="text" id="clientPan" required placeholder="ABCDE1234F" style="text-transform: uppercase;" oninput="checkExistingPan()">
+                </div>
+                <div class="form-group">
+                    <label>Mobile Number</label>
+                    <input type="number" id="clientMobile" required placeholder="9876543210">
+                </div>
+                <button type="submit" class="btn" id="clientSubmitBtn" style="margin-top: 0.5rem;">Save Client</button>
+            </form>
+        </div>
+
+        <div id="reportSection" class="card" style="background: transparent; box-shadow: none; padding: 0;">
+            
+            <div class="filter-wrapper">
+                <div class="filter-grid">
+                    <div class="form-group filter-full" style="margin-bottom: 0;">
+                        <input type="text" id="searchFilter" placeholder="Search Name, PAN..." oninput="applyFilters()">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <select id="statusFilter" onchange="applyFilters()">
+                            <option value="All">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Cleared">Cleared</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <select id="ayFilter" onchange="applyFilters()">
+                            <option value="All">All AYs</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportListContainer" style="padding-top: 0.5rem;">
+                <div class="empty-state">Loading reports...</div>
+            </div>
+
+            <div id="reportTotals" class="totals-footer" style="display: none;">
+                <div class="finance-row" style="margin: 0; background: transparent; border: none; padding: 0;">
+                    <div class="fin-item">
+                        <span class="fin-label">Total Charges</span>
+                        <span class="fin-val" id="totCharges">₹0</span>
+                    </div>
+                    <div class="fin-item">
+                        <span class="fin-label">Total Received</span>
+                        <span class="fin-val suc" id="totPaid">₹0</span>
+                    </div>
+                    <div class="fin-item">
+                        <span class="fin-label">Total Balance</span>
+                        <span class="fin-val err" id="totBalance">₹0</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="paymentModal" class="modal-overlay">
+        <div class="modal">
+            <h3 style="margin-top:0; margin-bottom: 0.5rem; font-size: 1.1rem;">Add Receipt</h3>
+            <div class="pc-id" id="modalBillIdDisplay"></div>
+            <form id="receiptForm">
+                <input type="hidden" id="modalBillId">
+                <div class="form-group">
+                    <label>Receipt Date</label>
+                    <input type="date" id="modalDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount (₹)</label>
+                    <input type="number" id="modalAmount" required placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Mode</label>
+                    <select id="modalMode" required>
+                        <option value="UPI">UPI</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Save</button>
+                <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('billingSection', 'New Billing', this)">
+            🛒 Billing
+        </div>
+        <div class="nav-item" onclick="switchTab('clientSection', 'Clients', this)">
+            👥 Clients
+        </div>
+        <div class="nav-item" onclick="switchTab('reportSection', 'Reports', this)">
+            📋 Reports
+        </div>
+    </div>
+
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzlAhmxo_MOgYxcK2SOp_OtAUHdaL2Pqji6QAs-TB1TlcQR0NUSADE_JDn3h389vl31/exec";
+
+        let clientDatabase = [];
+        let allReportsData = []; 
+
+        function getTodayDateString() {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+        }
+
+        window.onload = function() {
+            document.getElementById('billDate').value = getTodayDateString();
+            if (WEB_APP_URL !== "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+                fetchInitialData();
+            }
+        };
+
+        function fetchInitialData() {
+            fetch(WEB_APP_URL + "?action=getInitialData")
+            .then(response => response.json())
+            .then(data => {
+                clientDatabase = data.clients;
+                const dataList = document.getElementById('clientSuggestions');
+                dataList.innerHTML = ''; 
+                
+                clientDatabase.forEach(client => {
+                    let option = document.createElement('option');
+                    option.value = `${client.name} - ${client.pan}`;
+                    dataList.appendChild(option);
+                });
+
+                const aySelect = document.getElementById('billAY');
+                const ayFilter = document.getElementById('ayFilter');
+                aySelect.innerHTML = '';
+                
+                if(data.ays.length === 0) {
+                    aySelect.innerHTML = '<option value="2026-27">2026-27</option>';
+                } else {
+                    data.ays.forEach(year => {
+                        let option = document.createElement('option');
+                        option.value = year;
+                        option.text = year;
+                        aySelect.appendChild(option);
+                        
+                        let filterOption = document.createElement('option');
+                        filterOption.value = year;
+                        filterOption.text = year;
+                        ayFilter.appendChild(filterOption);
+                    });
+                }
+            });
+        }
+
+        function autofillClientDetails() {
+            const inputValue = document.getElementById('billName').value;
+            if (inputValue.includes(' - ')) {
+                const extractedPan = inputValue.split(' - ')[1].trim();
+                const matchedClient = clientDatabase.find(c => c.pan === extractedPan);
+                if (matchedClient) {
+                    document.getElementById('billClientId').value = matchedClient.id; 
+                    document.getElementById('billName').value = matchedClient.name; 
+                    document.getElementById('billPan').value = matchedClient.pan;
+                }
+            } else {
+                clearClientId();
+            }
+        }
+
+        function clearClientId() { document.getElementById('billClientId').value = ""; }
+
+        function autofillEditForm() {
+            const inputValue = document.getElementById('clientName').value;
+            if (inputValue.includes(' - ')) {
+                const extractedPan = inputValue.split(' - ')[1].trim();
+                const matchedClient = clientDatabase.find(c => c.pan === extractedPan);
+                if (matchedClient) {
+                    document.getElementById('clientName').value = matchedClient.name;
+                    document.getElementById('clientPan').value = matchedClient.pan;
+                    document.getElementById('clientMobile').value = matchedClient.mobile;
+                    document.getElementById('clientSubmitBtn').innerText = "Update";
+                }
+            } else {
+                document.getElementById('clientSubmitBtn').innerText = "Save";
+            }
+        }
+
+        function checkExistingPan() {
+            const pan = document.getElementById('clientPan').value.toUpperCase();
+            const matchedClient = clientDatabase.find(c => c.pan === pan);
+            if (matchedClient) {
+                document.getElementById('clientSubmitBtn').innerText = "Update";
+            } else {
+                document.getElementById('clientSubmitBtn').innerText = "Save";
+            }
+        }
+
+        function showNotification(message, type = "success") {
+            const toast = document.getElementById("toastNotification");
+            toast.innerText = message;
+            toast.className = "toast show";
+            if (type === "success") toast.classList.add("success");
+            else if (type === "error") toast.classList.add("error");
+            setTimeout(() => toast.classList.remove("show"), 3000);
+        }
+
+        function switchTab(sectionId, title, element) {
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            
+            document.querySelectorAll('.card:not(.report-card)').forEach(card => {
+                if(card.id === sectionId) card.classList.add('active');
+            });
+            
+            element.classList.add('active');
+            document.getElementById('pageTitle').innerText = title;
+            window.scrollTo(0, 0); 
+
+            if (sectionId === 'reportSection') {
+                fetchAllReports();
+            } else {
+                document.getElementById('reportTotals').style.display = 'none';
+            }
+        }
+
+        function calculateBalance() {
+            const charges = parseFloat(document.getElementById('billCharges').value) || 0;
+            const paid = parseFloat(document.getElementById('billPaid').value) || 0;
+            const balance = charges - paid;
+            
+            document.getElementById('billBalance').value = balance;
+            
+            let status = "Unpaid";
+            if (paid >= charges && charges > 0) status = "Cleared";
+            else if (paid > 0) status = "Partial";
+            document.getElementById('billStatus').value = status;
+
+            const modeGroup = document.getElementById('paymentModeGroup');
+            if (paid > 0) {
+                modeGroup.style.display = 'block';
+            } else {
+                modeGroup.style.display = 'none';
+            }
+        }
+
+        function quickPay(type) {
+            const charges = parseFloat(document.getElementById('billCharges').value) || 0;
+            if (type === 'full') {
+                document.getElementById('billPaid').value = charges;
+            } else if (type === 'unpaid') {
+                document.getElementById('billPaid').value = 0;
+            }
+            calculateBalance();
+        }
+
+        function openPaymentModal(billId) {
+            document.getElementById('modalBillId').value = billId;
+            document.getElementById('modalBillIdDisplay').innerText = "Ref: " + billId;
+            document.getElementById('modalDate').value = getTodayDateString(); 
+            document.getElementById('modalAmount').value = "";
+            document.getElementById('paymentModal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('paymentModal').style.display = 'none'; }
+
+        document.getElementById('receiptForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const payload = {
+                action: "AddReceipt",
+                billId: document.getElementById('modalBillId').value,
+                date: document.getElementById('modalDate').value,
+                amount: document.getElementById('modalAmount').value,
+                paymentMode: document.getElementById('modalMode').value
+            };
+            closeModal();
+            sendData(payload, 'receiptForm', true);
+        });
+
+        function sendWhatsAppReminder(mobile, name, ay, balance) {
+            if (!mobile || mobile === "undefined" || mobile === "") {
+                showNotification("No mobile number saved for this client.", "error"); return;
+            }
+            let formattedMobile = mobile.toString().replace(/\D/g, '');
+            if (formattedMobile.length === 10) formattedMobile = "91" + formattedMobile; 
+            const message = `👋 Hello *${name}*,\n\n✅ Your tax filing for Assessment Year *${ay}* has been successfully completed.\n\n📊 Current Pending Balance: *₹${balance}*\n\n🙏 Please clear the dues at your earliest convenience. Let us know if you need a detailed receipt or have any questions.\n\nThank you!`;
+            window.open(`https://wa.me/${formattedMobile}?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function fetchAllReports() {
+            const container = document.getElementById('reportListContainer');
+            container.innerHTML = '<div class="empty-state">Loading reports...</div>';
+            document.getElementById('loader').style.display = 'flex';
+
+            fetch(WEB_APP_URL + "?action=getReports")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loader').style.display = 'none';
+                allReportsData = data.reverse(); 
+                applyFilters(); 
+            })
+            .catch(error => {
+                document.getElementById('loader').style.display = 'none';
+                container.innerHTML = '<div class="empty-state" style="color: var(--error)">Failed to load data.</div>';
+            });
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchFilter').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            const ay = document.getElementById('ayFilter').value;
+
+            const totalsFooter = document.getElementById('reportTotals');
+            if (status === "All") {
+                totalsFooter.style.display = 'block';
+            } else {
+                totalsFooter.style.display = 'none';
+            }
+
+            const filteredData = allReportsData.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(search) || 
+                                      item.pan.toLowerCase().includes(search) || 
+                                      item.mobile.toString().includes(search);
+                
+                let matchesStatus = true;
+                if (status === "Pending") matchesStatus = (item.balance > 0);
+                if (status === "Cleared") matchesStatus = (item.balance <= 0);
+
+                const matchesAY = (ay === "All") || (item.ay === ay);
+
+                return matchesSearch && matchesStatus && matchesAY;
+            });
+
+            renderReports(filteredData);
+        }
+
+        function renderReports(data) {
+            const container = document.getElementById('reportListContainer');
+            container.innerHTML = ''; 
+
+            let sumCharges = 0;
+            let sumPaid = 0;
+            let sumBalance = 0;
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state">No matching bills found.</div>';
+                document.getElementById('totCharges').innerText = '₹0';
+                document.getElementById('totPaid').innerText = '₹0';
+                document.getElementById('totBalance').innerText = '₹0';
+                return;
+            }
+
+            data.forEach(item => {
+                sumCharges += item.charges;
+                sumPaid += item.paid;
+                sumBalance += item.balance;
+
+                const isCleared = item.balance <= 0;
+                const cardClass = isCleared ? "cleared" : "pending";
+                
+                const actionButtons = isCleared ? "" : `
+                    <div class="action-row">
+                        <button type="button" class="btn-pay" onclick="openPaymentModal('${item.billId}')">💸 Pay</button>
+                        <button type="button" class="btn-whatsapp" onclick="sendWhatsAppReminder('${item.mobile}', '${item.name}', '${item.ay}', '${item.balance}')">📲 Remind</button>
+                    </div>
+                `;
+
+                const cardHTML = `
+                    <div class="report-card ${cardClass}">
+                        <div class="pc-id">${item.billId}</div>
+                        <div class="pc-top">
+                            <div class="pc-name">${item.name}</div>
+                            <div class="pc-date">${item.date}</div>
+                        </div>
+                        
+                        <div class="finance-row">
+                            <div class="fin-item">
+                                <span class="fin-label">Charges</span>
+                                <span class="fin-val">₹${item.charges}</span>
+                            </div>
+                            <div class="fin-item">
+                                <span class="fin-label">Paid</span>
+                                <span class="fin-val">₹${item.paid}</span>
+                            </div>
+                            <div class="fin-item">
+                                <span class="fin-label">Balance</span>
+                                <span class="fin-val ${!isCleared ? 'err' : ''}">₹${item.balance}</span>
+                            </div>
+                        </div>
+
+                        <div class="pc-meta">
+                            <span class="pc-badge">AY: ${item.ay}</span>
+                            <span class="pc-badge">${item.pan}</span>
+                        </div>
+                        ${actionButtons}
+                    </div>
+                `;
+                container.innerHTML += cardHTML;
+            });
+
+            document.getElementById('totCharges').innerText = `₹${sumCharges}`;
+            document.getElementById('totPaid').innerText = `₹${sumPaid}`;
+            document.getElementById('totBalance').innerText = `₹${sumBalance}`;
+        }
+
+        document.getElementById('billingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let addons = [];
+            if(document.getElementById('addonPLBS').checked) addons.push("PLBS");
+            if(document.getElementById('addonProjPLBS').checked) addons.push("Proj. PLBS");
+
+            const payload = {
+                action: "Bills",
+                date: document.getElementById('billDate').value,
+                clientId: document.getElementById('billClientId').value,
+                name: document.getElementById('billName').value,
+                pan: document.getElementById('billPan').value.toUpperCase(),
+                ay: document.getElementById('billAY').value,
+                fileType: document.getElementById('billFileType').value,
+                addons: addons.join(", "),
+                charges: document.getElementById('billCharges').value,
+                paid: document.getElementById('billPaid').value,
+                balance: document.getElementById('billBalance').value,
+                paymentMode: parseFloat(document.getElementById('billPaid').value) > 0 ? document.getElementById('billMode').value : "",
+                status: document.getElementById('billStatus').value,
+                remarks: document.getElementById('billRemarks').value
+            };
+            sendData(payload, 'billingForm', false);
+        });
+
+        document.getElementById('clientForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const payload = {
+                action: "Clients",
+                name: document.getElementById('clientName').value,
+                pan: document.getElementById('clientPan').value.toUpperCase(),
+                mobile: document.getElementById('clientMobile').value
+            };
+            sendData(payload, 'clientForm', false);
+        });
+
+        function sendData(payload, formId, isReceiptUpdate) {
+            document.getElementById('loader').style.display = 'flex';
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.text()) 
+            .then(textResult => {
+                try {
+                    const data = JSON.parse(textResult);
+                    document.getElementById('loader').style.display = 'none';
+                    if(data.status === "Success") {
+                        showNotification("Saved Successfully!", "success");
+                        if (isReceiptUpdate) {
+                            fetchAllReports();
+                        } else {
+                            document.getElementById(formId).reset();
+                            
+                            if(formId === 'billingForm') {
+                                document.getElementById('billClientId').value = ""; 
+                                document.getElementById('billDate').value = getTodayDateString(); 
+                                document.getElementById('paymentModeGroup').style.display = 'none'; 
+                                document.getElementById('billStatus').value = "";
+                            }
+                            
+                            if (formId === 'clientForm') {
+                                document.getElementById('clientSubmitBtn').innerText = "Save";
+                            }
+                            
+                            fetchInitialData(); 
+                        }
+                    } else {
+                        document.getElementById('loader').style.display = 'none';
+                        showNotification("Error: " + data.message, "error");
+                    }
+                } catch(e) {
+                    document.getElementById('loader').style.display = 'none';
+                    showNotification("Failed to connect. Check Web App URL.", "error");
+                }
+            })
+            .catch(error => {
+                document.getElementById('loader').style.display = 'none';
+                showNotification("Network error.", "error");
+            });
+        }
+    </script>
+</body>
+</html>
