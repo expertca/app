@@ -1,0 +1,17 @@
+{
+  "name": "ITR Billings",
+  "short_name": "ITR Billings",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://placehold.co/512x512/0f62fe/ffffff.png?text=ITR\nBillings&font=Montserrat",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
