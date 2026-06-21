@@ -11,4 +11,10 @@ const tools = [
         html: 'itr-bills/index.html',
         icon: 'receipt'
     },
+{
+        name: 'GST Tracker',
+        description: 'Quickly track your GST returns',
+        html: 'https://mygstportal.onrender.com/login',
+        icon: 'receipt'
+    },
 ];
