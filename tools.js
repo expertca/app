@@ -15,6 +15,6 @@ const tools = [
         name: 'GST Tracker',
         description: 'Quickly track your GST returns',
         html: 'https://mygstportal.onrender.com/login',
-        icon: 'receipt'
+        icon: 'content-paste-search'
     },
 ];
