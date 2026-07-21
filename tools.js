@@ -14,8 +14,8 @@ const tools = [
     {
         name: 'Invoice Pro',
         description: 'Smart Invoicing Web Application',
-        html: 'https://script.google.com/macros/s/AKfycbyGR28ycVvmYS9KXh9Zn4JfAsYrK0VrTL9rjsoRoLyZ6m4Qio31e56ow-MwMnKNI-zIWg/exec',
-        icon: 'receipt'
+        html: 'invoicePro/index.html',
+        icon: 'receipt_long'
     },
 {
         name: 'GST Tracker',
