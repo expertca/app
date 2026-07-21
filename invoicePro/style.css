@@ -1,0 +1,56 @@
+/* All custom styles moved here for neatness in repo */
+body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+.top-nav { background: white; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); padding: 10px 0; margin-bottom: 15px; }
+.brand { font-size: 1.25rem; font-weight: 700; color: #4f46e5; display: flex; align-items: center; gap: 6px; margin: 0; }
+.header-container { display: flex; align-items: center; justify-content: space-between; }
+.header-left { flex: 1; min-width: max-content; }
+.header-center { flex: 2; display: flex; justify-content: center; }
+.header-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; min-width: max-content; }
+.nav-wrapper { width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.nav-wrapper::-webkit-scrollbar { display: none; }
+.nav-pills { flex-wrap: nowrap; margin-bottom: 0; }
+.nav-pills .nav-link { color: #4b5563; border-radius: 8px; font-weight: 500; padding: 6px 16px; margin: 0 4px; white-space: nowrap; transition: all 0.2s; font-size: 0.9rem;}
+.nav-pills .nav-link:hover { background-color: #f3f4f6; }
+.nav-pills .nav-link.active { background-color: #4f46e5; color: white; }
+
+@media (max-width: 767.98px) {
+  .header-container { flex-direction: column; align-items: stretch; }
+  .header-top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px; }
+  .header-left, .header-right { display: none !important; }
+  .nav-pills { width: 100%; display: flex; justify-content: space-between; }
+  .nav-pills .nav-link { flex: 1; text-align: center; margin: 0 2px; padding: 8px 4px; font-size: 0.8rem; }
+}
+
+.table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+.table-scroll { max-height: 65vh; overflow-y: auto; }
+.table-scroll thead th { position: sticky; top: 0; background-color: white; z-index: 1; border-bottom: 2px solid #e5e7eb; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1); }
+.table th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: #6b7280; }
+.table td { vertical-align: middle; border-bottom: 1px solid #f3f4f6; padding: 12px 8px; }
+.btn-primary { background-color: #4f46e5; border-color: #4f46e5; border-radius: 8px; font-weight: 500; }
+.badge-paid { background-color: #d1fae5; color: #065f46; padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;}
+.badge-due { background-color: #fee2e2; color: #991b1b; padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;}
+.modal-content { border-radius: 16px; border: none; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+.form-control, .form-select { border-radius: 6px; border-color: #d1d5db; box-shadow: none !important; }
+.form-control:focus, .form-select:focus { border-color: #4f46e5; outline: none; z-index: 1; }
+.input-group-text { border-color: #d1d5db; }
+
+#loaderOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(3px); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+@media (max-width: 767.98px) {
+  body { font-size: 0.85rem; }
+  .form-control, .form-select { font-size: 0.8rem !important; padding: 6px 10px !important; }
+  .btn { font-size: 0.8rem !important; }
+  .badge-paid, .badge-due { padding: 4px 6px; font-size: 0.65rem; }
+  table.main-list-table, .main-list-table thead, .main-list-table tbody, .main-list-table tr, .main-list-table td { display: block; width: 100%; }
+  .main-list-table thead { display: none; }
+  .main-list-table tr { margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); background: white; padding: 0; cursor: pointer; transition: 0.2s; overflow: hidden; }
+  .main-list-table tr:active { background-color: #f9fafb; }
+  .main-list-table td { padding: 0; border: none; }
+}
+
+@media print {
+  @page { margin: 0; size: A4 portrait; }
+  html, body { visibility: hidden; height: 100%; overflow: hidden; margin: 0; padding: 0; }
+  .app-wrapper, .modal { display: none !important; }
+  #printIframe { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 99999; }
+}
