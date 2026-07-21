@@ -1,5 +1,5 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
-const API_URL = "YOUR_GOOGLE_SCRIPT_WEB_APP_URL"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec"; 
 
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
