@@ -189,12 +189,18 @@ function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) {
     document.getElementById('previewPageTitle').innerText = title;
     document.getElementById('previewContent').innerHTML = contentHtml;
     
-    // Bind Action Buttons
     const btnEdit = document.getElementById('prevBtnEdit');
     const btnDel = document.getElementById('prevBtnDelete');
     
     if(onEdit) { btnEdit.classList.remove('d-none'); btnEdit.onclick = onEdit; } else { btnEdit.classList.add('d-none'); }
     if(onDelete) { btnDel.classList.remove('d-none'); btnDel.onclick = onDelete; } else { btnDel.classList.add('d-none'); }
+    
+    // Hide Statement Filter Header on everything except Statements
+    if (contextObj.type === 'Statement') {
+        document.getElementById('statementFilterSection').classList.remove('d-none');
+    } else {
+        document.getElementById('statementFilterSection').classList.add('d-none');
+    }
     
     showView('previewView');
     setTimeout(setInitialZoom, 50);
@@ -203,7 +209,7 @@ function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) {
 async function sharePDF() {
     const shareBtn = document.getElementById('prevBtnShare');
     const originalText = shareBtn.innerHTML;
-    shareBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+    shareBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...';
     shareBtn.disabled = true;
 
     try {
@@ -211,8 +217,11 @@ async function sharePDF() {
         const filename = `${currentPreviewContext.type}_${currentPreviewContext.id}.pdf`;
         
         const opt = {
-            margin:       0, filename: filename, image: { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            margin:       0, 
+            filename:     filename, 
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true }, 
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
         const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
@@ -225,7 +234,6 @@ async function sharePDF() {
                 files: [file]
             });
         } else {
-            // Fallback: Download file if sharing is not supported
             const link = document.createElement('a');
             link.href = URL.createObjectURL(pdfBlob); link.download = filename;
             link.click();
@@ -295,9 +303,9 @@ function openReceiptPreview(recId) {
 
     let clientName = inv ? inv['Client Name'] : (cl ? cl.Name : 'Advance Payment');
     let logoSrc = loadedData.company['Logo URL'] || '';
-    let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 50px; width: auto; object-fit: contain;">` : '';
+    let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
     
-    let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${rec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${rec.Date}</span></p></div></div>
+    let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${rec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${rec.Date}</span></p></div></div>
     <div class="p-4 bg-light border border-2 border-success rounded my-5 text-center">
        <h4 class="text-muted mb-2">AMOUNT RECEIVED</h4>
        <h1 class="fw-bold text-success display-4 mb-0">${parseFloat(rec.Amount).toFixed(2)}</h1>
@@ -318,24 +326,41 @@ function openReceiptPreview(recId) {
     );
 }
 
-// RESTORED CUSTOM DATES TOGGLE FUNCTION
-function toggleCustomDates() {
-  const val = document.getElementById('stmtFilter').value;
-  document.getElementById('customDateRange').className = val === 'custom' ? 'row mb-3' : 'd-none row mb-3';
-}
-
+// --- NO MODAL STATEMENT PREVIEW LOGIC ---
 function openStatement(clientId) {
   currentStmtClient = loadedData.clients.find(c => c.ID === clientId);
-  document.getElementById('stmtClientName').innerText = currentStmtClient.Name;
-  document.getElementById('stmtFilter').value = 'all'; toggleCustomDates();
-  new bootstrap.Modal(document.getElementById('statementModal')).show();
+  
+  // Set default filter to 'Last 3 Months'
+  document.getElementById('previewStmtFilter').value = '3m';
+  document.getElementById('previewCustomDates').classList.add('d-none');
+  
+  generateStatementPreview();
+}
+
+function handlePreviewFilterChange() {
+    const val = document.getElementById('previewStmtFilter').value;
+    if(val === 'custom') {
+        document.getElementById('previewCustomDates').classList.remove('d-none');
+    } else {
+        document.getElementById('previewCustomDates').classList.add('d-none');
+        generateStatementPreview();
+    }
 }
 
 function generateStatementPreview() {
   if(!currentStmtClient) return;
-  const filter = document.getElementById('stmtFilter').value; const now = new Date();
+  const filter = document.getElementById('previewStmtFilter').value; 
+  const now = new Date();
   let startDate = new Date(0); let endDate = new Date('2099-01-01');
-  if(filter === '3m') startDate = new Date(now.setMonth(now.getMonth() - 3)); else if(filter === '6m') startDate = new Date(now.setMonth(now.getMonth() - 6)); else if(filter === 'ty') startDate = new Date(new Date().getFullYear(), 0, 1); else if(filter === 'ly') { startDate = new Date(new Date().getFullYear() - 1, 0, 1); endDate = new Date(new Date().getFullYear() - 1, 11, 31, 23, 59, 59); } else if(filter === 'custom') { if(document.getElementById('stmtStartDate').value) startDate = new Date(document.getElementById('stmtStartDate').value); if(document.getElementById('stmtEndDate').value) { endDate = new Date(document.getElementById('stmtEndDate').value); endDate.setHours(23, 59, 59); } }
+  
+  if(filter === '3m') startDate = new Date(now.setMonth(now.getMonth() - 3)); 
+  else if(filter === '6m') startDate = new Date(now.setMonth(now.getMonth() - 6)); 
+  else if(filter === 'ty') startDate = new Date(new Date().getFullYear(), 0, 1); 
+  else if(filter === 'ly') { startDate = new Date(new Date().getFullYear() - 1, 0, 1); endDate = new Date(new Date().getFullYear() - 1, 11, 31, 23, 59, 59); } 
+  else if(filter === 'custom') { 
+      if(document.getElementById('prevStartDate').value) startDate = new Date(document.getElementById('prevStartDate').value); 
+      if(document.getElementById('prevEndDate').value) { endDate = new Date(document.getElementById('prevEndDate').value); endDate.setHours(23, 59, 59); } 
+  }
   
   let stmtData = [];
   loadedData.invoices.forEach(i => { let d = new Date(i.Date); if(i['Client ID'] === currentStmtClient.ID && d >= startDate && d <= endDate) { stmtData.push({ date: d, type: 'Invoice', ref: i['Invoice Number'], amount: parseFloat(i['Net Amount']) }); } });
@@ -350,23 +375,27 @@ function generateStatementPreview() {
   if(!tbody) tbody = '<tr><td colspan="5" class="text-center text-muted py-4">No records found.</td></tr>';
 
   let logoSrc = loadedData.company['Logo URL'] || '';
-  let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-3 mx-auto" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
+  let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
 
   let html = `
-    ${logoHtml}
-    <h3 class="fw-bold text-center mb-4">STATEMENT OF ACCOUNT</h3>
-    <div class="row mb-4">
-      <div class="col-6"><strong>Client:</strong> <span class="fs-5">${currentStmtClient.Name}</span></div>
-      <div class="col-6 text-end"><strong>Date Generated:</strong> <span>${new Date().toLocaleDateString()}</span></div>
+    <div class="row mb-4 pb-3 border-bottom">
+      <div class="col-7">
+        ${logoHtml}
+        <h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5>
+        <p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p>
+      </div>
+      <div class="col-5 text-end">
+        <h2 class="fw-bold" style="color: #4f46e5; letter-spacing: -0.5px;">STATEMENT</h2>
+        <p class="mb-1"><span class="text-muted fw-bold me-1">Client:</span> <span class="fw-bold">${currentStmtClient.Name}</span></p>
+        <p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${new Date().toLocaleDateString()}</span></p>
+      </div>
     </div>
-    <table class="table table-bordered table-sm">
+    <table class="table table-bordered table-sm mt-4">
       <thead class="table-light"><tr><th>Date</th><th>Type</th><th>Ref #</th><th class="text-end">Amount</th><th class="text-end">Balance</th></tr></thead>
       <tbody>${tbody}</tbody>
     </table>
     <h4 class="text-end fw-bold mt-4 border-top pt-3">Final Balance Due: <span class="${runTotal <= 0 ? 'text-success' : 'text-danger'}">${runTotal.toFixed(2)}</span></h4>
   `;
-  
-  bootstrap.Modal.getInstance(document.getElementById('statementModal')).hide();
   
   setupPreviewPage('Statement Preview', html, 
      { type: 'Statement', id: currentStmtClient.Name.substring(0,6), clientName: currentStmtClient.Name }, 
