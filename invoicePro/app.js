@@ -195,7 +195,6 @@ function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) {
     if(onEdit) { btnEdit.classList.remove('d-none'); btnEdit.onclick = onEdit; } else { btnEdit.classList.add('d-none'); }
     if(onDelete) { btnDel.classList.remove('d-none'); btnDel.onclick = onDelete; } else { btnDel.classList.add('d-none'); }
     
-    // Hide Statement Filter Header on everything except Statements
     if (contextObj.type === 'Statement') {
         document.getElementById('statementFilterSection').classList.remove('d-none');
     } else {
@@ -326,14 +325,11 @@ function openReceiptPreview(recId) {
     );
 }
 
-// --- NO MODAL STATEMENT PREVIEW LOGIC ---
 function openStatement(clientId) {
   currentStmtClient = loadedData.clients.find(c => c.ID === clientId);
-  
-  // Set default filter to 'Last 3 Months'
+  if(!currentStmtClient) return;
   document.getElementById('previewStmtFilter').value = '3m';
   document.getElementById('previewCustomDates').classList.add('d-none');
-  
   generateStatementPreview();
 }
 
