@@ -35,7 +35,8 @@
       </div>
       <div class="header-center nav-wrapper">
         <ul class="nav nav-pills" id="appTabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#invoicesTab">Invoices</button></li>
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overviewTab">Overview</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#invoicesTab">Invoices</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#clientsTab">Clients</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#servicesTab">Services</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#receiptsTab">Receipts</button></li>
@@ -48,11 +49,58 @@
   </div>
 
   <div class="container-xl tab-content">
-    <div class="tab-pane fade show active" id="invoicesTab">
+    
+    <!-- NEW OVERVIEW TAB -->
+    <div class="tab-pane fade show active" id="overviewTab">
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding</h6>
+                    <h2 class="fw-bold text-danger mb-0" id="dashTotalDue">₹0.00</h2>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Revenue This Year</h6>
+                    <h2 class="fw-bold text-success mb-0" id="dashTotalRev">₹0.00</h2>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices</h6>
+                    <h2 class="fw-bold text-warning mb-0" id="dashOverdueCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.75rem;">6-Month Revenue Trend</h6>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.75rem;">Recent Activity</h6>
+                    <div id="dashRecentActivity" style="max-height: 250px; overflow-y: auto;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVOICES -->
+    <div class="tab-pane fade" id="invoicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Invoices</h4>
-          <button class="btn btn-primary btn-sm px-3 py-2" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchInvoices" placeholder="Search Invoices..." onkeyup="renderTables()">
+            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
+          </div>
         </div>
         <div class="table-scroll">
           <table class="table main-list-table table-hover">
@@ -62,11 +110,16 @@
         </div>
       </div>
     </div>
+    
+    <!-- CLIENTS -->
     <div class="tab-pane fade" id="clientsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Client Master</h4>
-          <button class="btn btn-primary btn-sm px-3 py-2" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchClients" placeholder="Search Clients..." onkeyup="renderTables()">
+            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
+          </div>
         </div>
         <div class="table-scroll">
           <table class="table main-list-table">
@@ -76,11 +129,16 @@
         </div>
       </div>
     </div>
+    
+    <!-- SERVICES -->
     <div class="tab-pane fade" id="servicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Service Master</h4>
-          <button class="btn btn-primary btn-sm px-3 py-2" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchServices" placeholder="Search Services..." onkeyup="renderTables()">
+            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
+          </div>
         </div>
         <div class="table-scroll">
           <table class="table main-list-table">
@@ -90,11 +148,16 @@
         </div>
       </div>
     </div>
+    
+    <!-- RECEIPTS -->
     <div class="tab-pane fade" id="receiptsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Receipts</h4>
-          <button class="btn btn-primary btn-sm px-3 py-2" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
+          <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="searchReceipts" placeholder="Search Receipts..." onkeyup="renderTables()">
+            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
+          </div>
         </div>
         <div class="table-scroll">
           <table class="table main-list-table">
@@ -128,13 +191,20 @@
     <datalist id="clientList"></datalist>
 
     <div class="row mb-4">
-        <div class="col-sm-6 mb-2 mb-sm-0">
+        <div class="col-sm-4 mb-2 mb-sm-0">
             <div class="input-group input-group-sm">
                 <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Date</span>
-                <input type="date" id="inv_date" class="form-control">
+                <input type="date" id="inv_date" class="form-control" onchange="autoSetDueDate()">
             </div>
         </div>
-        <div class="col-sm-6">
+        <!-- NEW DUE DATE FIELD -->
+        <div class="col-sm-4 mb-2 mb-sm-0">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Due</span>
+                <input type="date" id="inv_due_date" class="form-control">
+            </div>
+        </div>
+        <div class="col-sm-4">
             <div class="input-group input-group-sm">
                 <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Inv #</span>
                 <input type="text" id="inv_num" class="form-control">
@@ -220,10 +290,8 @@
       <h5 class="fw-bold mb-0 text-primary d-none d-sm-block" id="previewPageTitle">Preview</h5>
     </div>
     
-    <!-- Clean Filter Button (Shows only for Statements) -->
     <button id="btnOpenFilter" class="btn btn-outline-primary btn-sm d-none ms-auto ms-md-0 me-2" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="bi bi-funnel"></i> Filter</button>
 
-    <!-- Zoom Controls -->
     <div class="d-flex align-items-center gap-2 ms-auto ms-md-0">
         <div class="btn-group shadow-sm">
           <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
@@ -232,11 +300,9 @@
     </div>
   </div>
   
-  <!-- d-flex justify-content-center safely confines the zoomed wrapper to the middle without horizontal scrolling -->
   <div class="w-100 px-2 pb-5 mb-5 d-flex justify-content-center" id="previewBodyWrapper" style="overflow-x: auto; overflow-y: hidden;">
      <div id="previewScaleWrapper" style="transform-origin: top left; transition: transform 0.15s ease-out;">
          <div id="previewContent" class="bg-white shadow-sm text-start" style="width: 210mm; padding: 15mm; overflow: hidden;">
-             <!-- Template HTML dynamically injected here -->
          </div>
      </div>
   </div>
@@ -260,7 +326,6 @@
 <div class="modal fade" id="serviceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="serviceModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="s_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveService()">Save Service</button></div></div></div></div>
 <div class="modal fade" id="receiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="receiptModalTitle">Record Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="r_id"><input type="hidden" id="rec_client_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Receipt Number</label><input type="text" id="rec_num" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Client <span class="text-danger">*</span></label><div class="input-group"><input class="form-control" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client..."><button class="btn btn-outline-secondary bg-white border-start-0" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button></div><datalist id="receiptClientList"></datalist></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Link Invoice (Optional)</label><select id="rec_invoice" class="form-select"><option value="">Unlinked (Advance Payment)</option></select></div><div class="row mb-3"><div class="col-6"><label class="form-label text-muted small fw-bold">Date</label><input type="date" id="rec_date" class="form-control"></div><div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveReceipt()">Save Receipt</button></div></div></div></div>
 
-<!-- NEW: DEDICATED FILTER MODAL -->
 <div class="modal fade" id="filterModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
@@ -289,7 +354,6 @@
   </div>
 </div>
 
-<!-- NEW: CUSTOM ALERT MODAL -->
 <div class="modal fade" id="alertModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
@@ -303,7 +367,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Library required for generating shareable PDFs -->
+<!-- Required Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="app.js"></script>
 </body>
