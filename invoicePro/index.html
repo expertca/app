@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>InvoicePro</title>
+  <title>Invoice Pro</title>
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -214,29 +214,38 @@
 
 <!-- ================= 3. UNIVERSAL PREVIEW VIEW (PAGE) ================= -->
 <div id="previewView" class="app-view d-none d-print-none pb-5">
-  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex flex-wrap justify-content-between align-items-center gap-2 z-3">
     <div class="d-flex align-items-center gap-3">
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary" id="previewPageTitle">Preview</h5>
     </div>
     <div class="d-flex align-items-center gap-2">
+        <!-- Zoom controls remain in top header -->
         <div class="btn-group shadow-sm d-none d-md-flex">
           <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
           <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(0.1)" title="Zoom In"><i class="bi bi-plus-lg"></i></button>
         </div>
-        <button class="btn btn-outline-danger btn-sm px-2" id="prevBtnDelete" title="Delete"><i class="bi bi-trash"></i></button>
-        <button class="btn btn-outline-secondary btn-sm px-2" id="prevBtnEdit" title="Edit"><i class="bi bi-pencil"></i></button>
-        <button class="btn btn-success btn-sm px-3" id="prevBtnShare" onclick="sharePDF()"><i class="bi bi-whatsapp"></i> Share</button>
-        <button class="btn btn-primary btn-sm px-3 shadow-sm" onclick="printHTML(document.getElementById('previewContent').innerHTML)"><i class="bi bi-printer"></i> Print</button>
     </div>
   </div>
   
-  <div class="w-100 px-2 pb-4" id="previewBodyWrapper" style="overflow: auto;">
+  <div class="w-100 px-2 pb-5 mb-5" id="previewBodyWrapper" style="overflow: auto;">
      <div id="previewScaleWrapper" style="transform-origin: top center; transition: transform 0.15s ease-out; margin: 0 auto;">
          <div id="previewContent" class="bg-white shadow-sm text-start" style="width: 210mm; min-height: 297mm; padding: 15mm; margin: 0 auto; overflow: hidden;">
              <!-- Template HTML dynamically injected here -->
          </div>
      </div>
+  </div>
+
+  <!-- FLOATING BOTTOM ACTION BAR -->
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top p-3 shadow-lg z-3 d-flex justify-content-between align-items-center">
+    <div>
+        <button class="btn btn-outline-danger btn-sm" id="prevBtnDelete" title="Delete"><i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Delete</span></button>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" id="prevBtnEdit" title="Edit"><i class="bi bi-pencil"></i> <span class="d-none d-sm-inline">Edit</span></button>
+        <button class="btn btn-success btn-sm px-3 shadow-sm" id="prevBtnShare" onclick="sharePDF()"><i class="bi bi-whatsapp"></i> Share</button>
+        <button class="btn btn-primary btn-sm px-4 shadow-sm" onclick="printHTML(document.getElementById('previewContent').innerHTML)"><i class="bi bi-printer"></i> Print</button>
+    </div>
   </div>
 </div>
 
