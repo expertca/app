@@ -1,6 +1,5 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
 const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec";
-
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
@@ -180,7 +179,6 @@ function zoomPreview(delta) {
     const content = document.getElementById('previewContent');
     
     scaleWrapper.style.transform = `scale(${currentZoom})`;
-    // Lock the bounding box perfectly so it doesn't cause phantom overflow scrolling
     const scaledWidth = content.offsetWidth * currentZoom;
     const scaledHeight = content.offsetHeight * currentZoom;
     scaleWrapper.style.width = scaledWidth + 'px';
@@ -189,10 +187,10 @@ function zoomPreview(delta) {
 
 function setInitialZoom() {
     const bodyWrapper = document.getElementById('previewBodyWrapper');
-    const bodyWidth = bodyWrapper.clientWidth - 20; // safe padding
-    const a4WidthPx = 210 * 3.779527; // approx 793px
+    const bodyWidth = bodyWrapper.clientWidth - 20; 
+    const a4WidthPx = 210 * 3.779527; 
     if(bodyWidth < a4WidthPx) { currentZoom = bodyWidth / a4WidthPx; } else { currentZoom = 1; }
-    zoomPreview(0); // Trigger resize wrapper
+    zoomPreview(0); 
 }
 
 function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) {
@@ -206,12 +204,14 @@ function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) {
     if(onEdit) { btnEdit.classList.remove('d-none'); btnEdit.onclick = onEdit; } else { btnEdit.classList.add('d-none'); }
     if(onDelete) { btnDel.classList.remove('d-none'); btnDel.onclick = onDelete; } else { btnDel.classList.add('d-none'); }
     
-    // Toggle Filter Button only on Statements
+    // FIX: Targeting the new 'btnOpenFilter' instead of the removed wrapper
     const btnFilter = document.getElementById('btnOpenFilter');
-    if (contextObj.type === 'Statement') {
-        btnFilter.classList.remove('d-none');
-    } else {
-        btnFilter.classList.add('d-none');
+    if (btnFilter) {
+        if (contextObj.type === 'Statement') {
+            btnFilter.classList.remove('d-none');
+        } else {
+            btnFilter.classList.add('d-none');
+        }
     }
     
     showView('previewView');
