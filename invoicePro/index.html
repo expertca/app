@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>InvoicePro</title>
   
-  <!-- True PWA Manifest -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#4f46e5">
@@ -14,7 +13,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Link External CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -24,7 +22,8 @@
   <h5 class="fw-bold" style="color: #4f46e5;" id="loaderText">Loading App...</h5>
 </div>
 
-<div class="app-wrapper d-print-none" id="mainAppWrapper">
+<!-- ================= 1. DASHBOARD VIEW ================= -->
+<div id="dashboardView" class="app-view d-print-none">
   <div class="top-nav">
     <div class="container-xl header-container">
       <div class="header-top-row d-md-none">
@@ -63,7 +62,6 @@
         </div>
       </div>
     </div>
-
     <div class="tab-pane fade" id="clientsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -78,7 +76,6 @@
         </div>
       </div>
     </div>
-
     <div class="tab-pane fade" id="servicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -93,7 +90,6 @@
         </div>
       </div>
     </div>
-
     <div class="tab-pane fade" id="receiptsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -111,98 +107,149 @@
   </div>
 </div>
 
-<!-- UNIVERSAL ACTION MODAL -->
-<div class="modal fade" id="actionModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-sm align-items-end">
-    <div class="modal-content border-0">
-      <div class="modal-header border-0 pb-1">
-        <h6 class="modal-title fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Choose Action</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body d-flex flex-column gap-2 pt-0" id="actionModalBody"></div>
+<!-- ================= 2. INVOICE FORM VIEW (PAGE) ================= -->
+<div id="invoiceFormView" class="app-view d-none d-print-none pb-5">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="invoicePageTitle">Create Invoice</h5>
     </div>
+    <button class="btn btn-primary btn-sm px-4" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-</div>
+  
+  <div class="container-xl max-w-3xl mx-auto">
+    <input type="hidden" id="inv_id"> 
+    
+    <div class="input-group input-group-sm mb-2">
+        <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span>
+        <input class="form-control" list="clientList" id="inv_client" placeholder="Search client...">
+        <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('inv_client').value=''"><i class="bi bi-x"></i></button>
+    </div>
+    <datalist id="clientList"></datalist>
 
-<!-- INVOICE PREVIEW MODAL -->
-<div class="modal fade" id="invoicePreviewModal" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content border-0">
-      <div class="modal-header border-bottom-0 pb-2 bg-light">
-        <h5 class="modal-title fw-bold text-primary mb-0">Invoice Preview</h5>
-        <div class="ms-auto d-flex align-items-center gap-3">
-          <div class="btn-group shadow-sm">
-            <button class="btn btn-white border btn-sm px-3" onclick="zoomInvoice(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
-            <button class="btn btn-white border btn-sm px-3" onclick="zoomInvoice(0.1)" title="Zoom In"><i class="bi bi-plus-lg"></i></button>
+    <div class="row mb-4">
+        <div class="col-sm-6 mb-2 mb-sm-0">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Date</span>
+                <input type="date" id="inv_date" class="form-control">
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Inv #</span>
+                <input type="text" id="inv_num" class="form-control">
+            </div>
+        </div>
+    </div>
+    
+    <div class="card p-2 p-md-3 mb-4 shadow-sm border-0">
+      <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Service</span>
+          <input class="form-control" list="serviceList" id="item_service" onchange="autoFillServiceDetails()" placeholder="Search...">
+          <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button>
+      </div>
+      <datalist id="serviceList"></datalist>
+      
+      <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Desc</span>
+          <input type="text" id="item_desc" class="form-control">
+      </div>
+      
+      <div class="row mb-2">
+          <div class="col-6 pe-1">
+              <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Qty</span>
+                  <input type="number" id="item_qty" class="form-control" value="1">
+              </div>
           </div>
-          <button type="button" class="btn-close m-0" data-bs-dismiss="modal"></button>
-        </div>
+          <div class="col-6 ps-1">
+              <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Rate</span>
+                  <input type="number" id="item_rate" class="form-control">
+              </div>
+          </div>
       </div>
+      <button class="btn btn-dark btn-sm w-100 py-2 mt-1" onclick="addItem()"><i class="bi bi-plus-lg"></i> Add Item</button>
       
-      <div class="modal-body bg-secondary p-3 p-md-4" id="invoicePreviewBodyWrapper" style="overflow: auto;">
-         <div id="invoicePreviewScaleWrapper" style="transform-origin: top left; transition: transform 0.15s ease-out; margin: 0 auto;">
-             <div id="invoicePreviewContent" class="bg-white shadow-sm" style="width: 210mm; min-height: 297mm; padding: 15mm; margin: 0 auto;"></div>
-         </div>
-      </div>
-      
-      <div class="modal-footer bg-light d-flex justify-content-between border-top-0 pt-2">
-         <div><button class="btn btn-outline-danger btn-sm" id="prevBtnDelete"><i class="bi bi-trash"></i> Delete</button></div>
-         <div>
-            <button class="btn btn-outline-secondary btn-sm me-2" id="prevBtnEdit"><i class="bi bi-pencil"></i> Edit</button>
-            <button class="btn btn-primary btn-sm px-4 shadow-sm" id="prevBtnPrint"><i class="bi bi-printer"></i> Print</button>
-         </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CLIENT STATEMENT MODAL -->
-<div class="modal fade" id="statementModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header">
-      <h6 class="modal-title fw-bold text-primary mb-0" id="stmtClientName"></h6>
-      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body bg-light">
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label class="form-label text-muted small fw-bold">Filter Range</label>
-          <select class="form-select" id="stmtFilter" onchange="toggleCustomDates(); generateStatement()">
-            <option value="all">All Time</option>
-            <option value="3m">Last 3 Months</option>
-            <option value="6m">Last 6 Months</option>
-            <option value="ty">This Year</option>
-            <option value="ly">Last Year</option>
-            <option value="custom">Custom Range</option>
-          </select>
-        </div>
-      </div>
-      <div id="customDateRange" class="d-none row mb-3">
-        <div class="col-6"><label class="form-label text-muted small fw-bold">Start Date</label><input type="date" id="stmtStartDate" class="form-control" onchange="generateStatement()"></div>
-        <div class="col-6"><label class="form-label text-muted small fw-bold">End Date</label><input type="date" id="stmtEndDate" class="form-control" onchange="generateStatement()"></div>
-      </div>
-      <div class="table-scroll" style="max-height: 400px;">
-        <table class="table table-sm bg-white border">
-          <thead class="table-light"><tr><th>Date</th><th>Type</th><th>Ref #</th><th class="text-end">Amount</th></tr></thead>
-          <tbody id="statementTableBody"></tbody>
+      <div class="table-scroll table-responsive mt-3" style="max-height: 250px;">
+        <table class="table table-sm border-top align-middle">
+          <thead class="table-light"><tr><th>Service Details</th><th>Rate</th><th>Qty</th><th class="text-end">Amount</th><th></th></tr></thead>
+          <tbody id="itemList"></tbody>
         </table>
       </div>
     </div>
-    <div class="modal-footer d-flex justify-content-between">
-      <div class="fw-bold">Total Due: <span id="stmtTotalDue" class="text-danger"></span></div>
-      <button class="btn btn-secondary" onclick="printStatement()"><i class="bi bi-printer"></i> Print</button>
+
+    <div class="row justify-content-end border-bottom pb-4 mb-4">
+        <div class="col-12 col-md-6">
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Total</span>
+                <input type="number" id="inv_total" class="form-control bg-white text-end" readonly>
+            </div>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Discount</span>
+                <input type="number" id="inv_disc" class="form-control text-end" value="0" oninput="calculateNet()">
+            </div>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Round Off</span>
+                <input type="number" id="inv_round" class="form-control text-end" value="0" oninput="calculateNet()">
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-primary bg-light w-50 justify-content-end">Net Amount</span>
+                <input type="number" id="inv_net" class="form-control fw-bold bg-white text-primary text-end" readonly>
+            </div>
+        </div>
     </div>
-  </div></div>
+    
+    <div id="initialReceiptBlock">
+      <h6 class="fw-bold mb-3"><i class="bi bi-wallet2"></i> Record Initial Payment</h6>
+      <div class="row">
+         <div class="col-6 mb-3"><input type="number" id="inv_rec_amount" class="form-control" placeholder="Amount Received"></div>
+         <div class="col-6 mb-3">
+           <select id="inv_rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select>
+         </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- CLIENT, SERVICE, INVOICE, AND RECEIPT MODALS -->
+<!-- ================= 3. UNIVERSAL PREVIEW VIEW (PAGE) ================= -->
+<div id="previewView" class="app-view d-none d-print-none pb-5">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="previewPageTitle">Preview</h5>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="btn-group shadow-sm d-none d-md-flex">
+          <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
+          <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(0.1)" title="Zoom In"><i class="bi bi-plus-lg"></i></button>
+        </div>
+        <button class="btn btn-outline-danger btn-sm px-2" id="prevBtnDelete" title="Delete"><i class="bi bi-trash"></i></button>
+        <button class="btn btn-outline-secondary btn-sm px-2" id="prevBtnEdit" title="Edit"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-success btn-sm px-3" id="prevBtnShare" onclick="sharePDF()"><i class="bi bi-whatsapp"></i> Share</button>
+        <button class="btn btn-primary btn-sm px-3 shadow-sm" onclick="printHTML(document.getElementById('previewContent').innerHTML)"><i class="bi bi-printer"></i> Print</button>
+    </div>
+  </div>
+  
+  <div class="w-100 px-2 pb-4" id="previewBodyWrapper" style="overflow: auto;">
+     <div id="previewScaleWrapper" style="transform-origin: top center; transition: transform 0.15s ease-out; margin: 0 auto;">
+         <div id="previewContent" class="bg-white shadow-sm text-start" style="width: 210mm; min-height: 297mm; padding: 15mm; margin: 0 auto; overflow: hidden;">
+             <!-- Template HTML dynamically injected here -->
+         </div>
+     </div>
+  </div>
+</div>
+
+<!-- ================= MINOR MODALS ================= -->
+<div class="modal fade" id="actionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm align-items-end"><div class="modal-content border-0"><div class="modal-header border-0 pb-1"><h6 class="modal-title fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Choose Action</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body d-flex flex-column gap-2 pt-0" id="actionModalBody"></div></div></div></div>
 <div class="modal fade" id="clientModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="clientModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="c_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Client Name *</label><input type="text" id="c_name" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div><div class="row"><div class="col-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div><div class="col-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control"></div></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveClient()">Save Client</button></div></div></div></div>
 <div class="modal fade" id="serviceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="serviceModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="s_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveService()">Save Service</button></div></div></div></div>
-<div class="modal fade" id="invoiceModal" tabindex="-1"><div class="modal-dialog modal-xl modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="invoiceModalTitle">Create Invoice</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><input type="hidden" id="inv_id"><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span><input class="form-control" list="clientList" id="inv_client" placeholder="Search client..."><button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('inv_client').value=''"><i class="bi bi-x"></i></button></div><datalist id="clientList"></datalist><div class="row mb-4"><div class="col-sm-6 mb-2 mb-sm-0"><div class="input-group input-group-sm"><span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Date</span><input type="date" id="inv_date" class="form-control"></div></div><div class="col-sm-6"><div class="input-group input-group-sm"><span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Inv #</span><input type="text" id="inv_num" class="form-control"></div></div></div><div class="card p-2 p-md-3 mb-4 shadow-sm border-0"><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Service</span><input class="form-control" list="serviceList" id="item_service" onchange="autoFillServiceDetails()" placeholder="Search..."><button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button></div><datalist id="serviceList"></datalist><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Desc</span><input type="text" id="item_desc" class="form-control"></div><div class="row mb-2"><div class="col-6 pe-1"><div class="input-group input-group-sm"><span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Qty</span><input type="number" id="item_qty" class="form-control" value="1"></div></div><div class="col-6 ps-1"><div class="input-group input-group-sm"><span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Rate</span><input type="number" id="item_rate" class="form-control"></div></div></div><button class="btn btn-dark btn-sm w-100 py-2 mt-1" onclick="addItem()"><i class="bi bi-plus-lg"></i> Add Item</button><div class="table-scroll table-responsive mt-3" style="max-height: 250px;"><table class="table table-sm border-top align-middle"><thead class="table-light"><tr><th>Service Details</th><th>Rate</th><th>Qty</th><th class="text-end">Amount</th><th></th></tr></thead><tbody id="itemList"></tbody></table></div></div><div class="row justify-content-end border-bottom pb-4 mb-4"><div class="col-12 col-md-6"><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Total</span><input type="number" id="inv_total" class="form-control bg-white text-end" readonly></div><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Discount</span><input type="number" id="inv_disc" class="form-control text-end" value="0" oninput="calculateNet()"></div><div class="input-group input-group-sm mb-2"><span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Round Off</span><input type="number" id="inv_round" class="form-control text-end" value="0" oninput="calculateNet()"></div><div class="input-group input-group-sm"><span class="input-group-text fw-bold text-primary bg-light w-50 justify-content-end">Net Amount</span><input type="number" id="inv_net" class="form-control fw-bold bg-white text-primary text-end" readonly></div></div></div><div id="initialReceiptBlock"><h6 class="fw-bold mb-3"><i class="bi bi-wallet2"></i> Record Initial Payment</h6><div class="row"><div class="col-6 mb-3"><input type="number" id="inv_rec_amount" class="form-control" placeholder="Amount Received"></div><div class="col-6 mb-3"><select id="inv_rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div></div></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" id="saveInvBtn" onclick="saveInvoice()">Generate Invoice</button></div></div></div></div>
 <div class="modal fade" id="receiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="receiptModalTitle">Record Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="r_id"><input type="hidden" id="rec_client_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Receipt Number</label><input type="text" id="rec_num" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Client <span class="text-danger">*</span></label><div class="input-group"><input class="form-control" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client..."><button class="btn btn-outline-secondary bg-white border-start-0" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button></div><datalist id="receiptClientList"></datalist></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Link Invoice (Optional)</label><select id="rec_invoice" class="form-select"><option value="">Unlinked (Advance Payment)</option></select></div><div class="row mb-3"><div class="col-6"><label class="form-label text-muted small fw-bold">Date</label><input type="date" id="rec_date" class="form-control"></div><div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveReceipt()">Save Receipt</button></div></div></div></div>
+<div class="modal fade" id="statementModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h6 class="modal-title fw-bold text-primary mb-0" id="stmtClientName"></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><div class="row mb-3"><div class="col-12"><label class="form-label text-muted small fw-bold">Filter Range</label><select class="form-select" id="stmtFilter" onchange="toggleCustomDates()"><option value="all">All Time</option><option value="3m">Last 3 Months</option><option value="6m">Last 6 Months</option><option value="ty">This Year</option><option value="ly">Last Year</option><option value="custom">Custom Range</option></select></div></div><div id="customDateRange" class="d-none row mb-3"><div class="col-6"><label class="form-label text-muted small fw-bold">Start Date</label><input type="date" id="stmtStartDate" class="form-control"></div><div class="col-6"><label class="form-label text-muted small fw-bold">End Date</label><input type="date" id="stmtEndDate" class="form-control"></div></div></div><div class="modal-footer d-flex justify-content-end"><button class="btn btn-primary w-100 py-2" onclick="generateStatementPreview()">Generate Statement</button></div></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Link External JS -->
+<!-- Library required for generating shareable PDFs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
