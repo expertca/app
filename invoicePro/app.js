@@ -1,13 +1,15 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
 const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec";
-
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
 let currentPreviewContext = {}; 
-let revenueChartInstance = null; // Store chart instance to destroy it before re-rendering
+let revenueChartInstance = null; 
 
-function customAlert(message) { document.getElementById('alertMessage').innerText = message; new bootstrap.Modal(document.getElementById('alertModal')).show(); }
+function customAlert(message) { 
+    document.getElementById('alertMessage').innerText = message; 
+    new bootstrap.Modal(document.getElementById('alertModal')).show(); 
+}
 
 function showView(viewId) {
     document.querySelectorAll('.app-view').forEach(v => v.classList.add('d-none'));
@@ -17,12 +19,47 @@ function showView(viewId) {
 
 // --- INDEXED DB ENGINE ---
 let db;
-function initDB(callback) { let req = window.indexedDB.open('InvoiceProDB', 1); req.onupgradeneeded = e => { db = e.target.result; if (!db.objectStoreNames.contains('syncQueue')) db.createObjectStore('syncQueue', { keyPath: 'id' }); if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache', { keyPath: 'key' }); }; req.onsuccess = e => { db = e.target.result; if(callback) callback(); }; req.onerror = () => { if(callback) callback(); }; }
-function updateSyncStatus(status) { const badges = document.querySelectorAll('.sync-badge'); badges.forEach(badge => { if(status === 'Synced') { badge.className = 'badge bg-success sync-badge'; badge.innerText = 'Synced'; } else if(status === 'Offline') { badge.className = 'badge bg-warning text-dark sync-badge'; badge.innerText = 'Offline Mode'; } else if(status === 'Pending') { badge.className = 'badge bg-danger sync-badge'; badge.innerText = 'Pending Sync'; } else { badge.className = 'badge bg-primary sync-badge'; badge.innerText = 'Syncing...'; } }); }
-function saveLocalCache(data) { try { localStorage.setItem('InvoiceProCache', JSON.stringify(data)); } catch(e){} if(db) { try { let tx = db.transaction('cache', 'readwrite'); tx.objectStore('cache').put({ key: 'loadedData', data: data }); } catch(e){} } }
-function loadLocalCache(callback) { let hasCache = false; try { const cached = localStorage.getItem('InvoiceProCache'); if (cached) { loadedData = JSON.parse(cached); calculateBalances(); renderTables(); populateDropdowns(); hasCache = true; } } catch(e){} if(callback) callback(hasCache); }
+function initDB(callback) { 
+    let req = window.indexedDB.open('InvoiceProDB', 1); 
+    req.onupgradeneeded = e => { 
+        db = e.target.result; 
+        if (!db.objectStoreNames.contains('syncQueue')) db.createObjectStore('syncQueue', { keyPath: 'id' }); 
+        if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache', { keyPath: 'key' }); 
+    }; 
+    req.onsuccess = e => { db = e.target.result; if(callback) callback(); }; 
+    req.onerror = () => { if(callback) callback(); }; 
+}
 
-async function apiCall(action, ...params) { const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, params: params }) }); const result = await response.json(); if(!result.success) throw new Error(result.error); return result.data; }
+function updateSyncStatus(status) { 
+    const badges = document.querySelectorAll('.sync-badge'); 
+    badges.forEach(badge => { 
+        if(status === 'Synced') { badge.className = 'badge bg-success sync-badge'; badge.innerText = 'Synced'; } 
+        else if(status === 'Offline') { badge.className = 'badge bg-warning text-dark sync-badge'; badge.innerText = 'Offline Mode'; } 
+        else if(status === 'Pending') { badge.className = 'badge bg-danger sync-badge'; badge.innerText = 'Pending Sync'; } 
+        else { badge.className = 'badge bg-primary sync-badge'; badge.innerText = 'Syncing...'; } 
+    }); 
+}
+
+function saveLocalCache(data) { 
+    try { localStorage.setItem('InvoiceProCache', JSON.stringify(data)); } catch(e){} 
+    if(db) { try { let tx = db.transaction('cache', 'readwrite'); tx.objectStore('cache').put({ key: 'loadedData', data: data }); } catch(e){} } 
+}
+
+function loadLocalCache(callback) { 
+    let hasCache = false; 
+    try { 
+        const cached = localStorage.getItem('InvoiceProCache'); 
+        if (cached) { loadedData = JSON.parse(cached); calculateBalances(); renderTables(); populateDropdowns(); hasCache = true; } 
+    } catch(e){} 
+    if(callback) callback(hasCache); 
+}
+
+async function apiCall(action, ...params) { 
+    const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, params: params }) }); 
+    const result = await response.json(); 
+    if(!result.success) throw new Error(result.error); 
+    return result.data; 
+}
 
 function loadApp() {
   initDB(() => {
@@ -30,11 +67,18 @@ function loadApp() {
       if(hasCache) { document.getElementById('loaderOverlay').classList.add('d-none'); }
       if(!navigator.onLine) { updateSyncStatus('Offline'); document.getElementById('loaderOverlay').classList.add('d-none'); return; }
       updateSyncStatus('Syncing...');
-      apiCall('getInitialData').then(data => { loadedData = data || { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] }; saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns(); updateSyncStatus('Synced'); document.getElementById('loaderOverlay').classList.add('d-none'); processQueue(); }).catch(err => { updateSyncStatus('Offline'); document.getElementById('loaderOverlay').classList.add('d-none'); });
+      apiCall('getInitialData').then(data => { 
+          loadedData = data || { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] }; 
+          saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns(); 
+          updateSyncStatus('Synced'); document.getElementById('loaderOverlay').classList.add('d-none'); 
+          processQueue(); 
+      }).catch(err => { updateSyncStatus('Offline'); document.getElementById('loaderOverlay').classList.add('d-none'); });
     });
   });
 }
-window.addEventListener('online', () => { updateSyncStatus('Syncing...'); loadApp(); }); window.addEventListener('offline', () => updateSyncStatus('Offline'));
+window.addEventListener('online', () => { updateSyncStatus('Syncing...'); loadApp(); }); 
+window.addEventListener('offline', () => updateSyncStatus('Offline'));
+
 function saveToQueue(action, params) { if(!db) return; try { let tx = db.transaction('syncQueue', 'readwrite'); tx.objectStore('syncQueue').add({ id: Date.now().toString(), action: action, params: params }); updateSyncStatus('Pending'); } catch(e){} }
 function processQueue() { if (!navigator.onLine || !db) return; try { let tx = db.transaction('syncQueue', 'readonly'); let req = tx.objectStore('syncQueue').getAll(); req.onsuccess = () => { let queue = req.result; if (queue.length === 0) return; updateSyncStatus('Syncing...'); let item = queue[0]; apiCall(item.action, ...item.params).then(() => { let dTx = db.transaction('syncQueue', 'readwrite'); dTx.objectStore('syncQueue').delete(item.id); dTx.oncomplete = () => processQueue(); }).catch(() => updateSyncStatus('Offline')); }; } catch(e){} }
 function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch(() => { saveToQueue(action, params); }); }
@@ -85,7 +129,6 @@ function renderDashboard() {
     const now = new Date(); const currentYear = now.getFullYear();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     
-    // Setup Chart Data Array [MonthNames, Totals]
     let monthlyData = {};
     for(let i=5; i>=0; i--) {
         let d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -94,22 +137,14 @@ function renderDashboard() {
 
     loadedData.invoices.forEach(inv => {
         if(inv.balance > 0) totalDue += inv.balance;
-        
         let invDate = new Date(inv.Date);
         if(invDate.getFullYear() === currentYear) totalRevThisYear += (parseFloat(inv['Net Amount']) || 0);
-        
-        // Populate Chart
         if(invDate >= sixMonthsAgo) {
             let monthName = invDate.toLocaleString('default', { month: 'short' });
             if(monthlyData[monthName] !== undefined) monthlyData[monthName] += (parseFloat(inv['Net Amount']) || 0);
         }
-
-        // Overdue Check
         let dueDateStr = inv['Due Date'] || inv.dueDate; 
-        if(!dueDateStr) {
-            // If no due date, default to 15 days after invoice date
-            let d = new Date(invDate); d.setDate(d.getDate() + 15); dueDateStr = d;
-        }
+        if(!dueDateStr) { let d = new Date(invDate); d.setDate(d.getDate() + 15); dueDateStr = d; }
         if(inv.balance > 0 && new Date(dueDateStr) < new Date(now.setHours(0,0,0,0))) overdueCount++;
     });
 
@@ -117,10 +152,9 @@ function renderDashboard() {
     document.getElementById('dashTotalRev').innerText = '₹' + totalRevThisYear.toFixed(2);
     document.getElementById('dashOverdueCount').innerText = overdueCount;
 
-    // Render Chart
     const ctx = document.getElementById('revenueChart');
     if(ctx) {
-        if(revenueChartInstance) revenueChartInstance.destroy(); // Prevent canvas overlay issues
+        if(revenueChartInstance) revenueChartInstance.destroy(); 
         revenueChartInstance = new Chart(ctx, {
             type: 'bar',
             data: { labels: Object.keys(monthlyData), datasets: [{ label: 'Revenue (₹)', data: Object.values(monthlyData), backgroundColor: '#4f46e5', borderRadius: 4 }] },
@@ -128,22 +162,19 @@ function renderDashboard() {
         });
     }
 
-    // Recent Activity Feed
     let activity = [];
     loadedData.invoices.forEach(i => activity.push({ date: new Date(i.Date), text: `Created Invoice <b>${i['Invoice Number']}</b> for ${i['Client Name']} (₹${i['Net Amount']})`, icon: 'bi-file-earmark-text', color: 'text-primary' }));
     loadedData.receipts.forEach(r => { let cl = loadedData.clients.find(c => c.ID === r['Client ID']); let cName = cl ? cl.Name : 'Unknown'; activity.push({ date: new Date(r.Date), text: `Received <b>₹${r.Amount}</b> from ${cName}`, icon: 'bi-cash-stack', color: 'text-success' }); });
     
-    activity.sort((a,b) => b.date - a.date); // Sort newest first
+    activity.sort((a,b) => b.date - a.date); 
     let feedHtml = activity.slice(0, 10).map(a => `<div class="d-flex mb-3"><div class="me-3 ${a.color}"><i class="bi ${a.icon} fs-5"></i></div><div><div class="small">${a.text}</div><div class="text-muted" style="font-size:0.7rem;">${a.date.toLocaleDateString()}</div></div></div>`).join('');
     document.getElementById('dashRecentActivity').innerHTML = feedHtml || '<p class="text-muted small">No recent activity.</p>';
 }
 
-// --- WHATSAPP REMINDER LOGIC ---
 function sendWhatsAppReminder(invId) {
     const inv = loadedData.invoices.find(i => i['Invoice ID'] === invId);
     const client = loadedData.clients.find(c => c.ID === inv['Client ID']);
     if(!client || !client.Mobile) return customAlert("No mobile number saved for this client.");
-    
     const phone = client.Mobile.replace(/[^\d]/g, '');
     const text = `Hello ${inv['Client Name']},\n\nA gentle reminder that Invoice *${inv['Invoice Number']}* has a pending balance of *₹${inv.balance.toFixed(2)}*.\n\nPlease let us know when this can be cleared. Thank you!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
@@ -151,9 +182,27 @@ function sendWhatsAppReminder(invId) {
 
 // --- UNIVERSAL PREVIEW & PDF LOGIC ---
 let currentZoom = 1;
-function zoomPreview(delta) { currentZoom += delta; if(currentZoom < 0.3) currentZoom = 0.3; if(currentZoom > 2.5) currentZoom = 2.5; const scaleWrapper = document.getElementById('previewScaleWrapper'); const content = document.getElementById('previewContent'); scaleWrapper.style.transform = `scale(${currentZoom})`; scaleWrapper.style.width = (content.offsetWidth * currentZoom) + 'px'; scaleWrapper.style.height = (content.offsetHeight * currentZoom) + 'px'; }
-function setInitialZoom() { const bodyWrapper = document.getElementById('previewBodyWrapper'); const bodyWidth = bodyWrapper.clientWidth - 20; const a4WidthPx = 210 * 3.779527; if(bodyWidth < a4WidthPx) { currentZoom = bodyWidth / a4WidthPx; } else { currentZoom = 1; } zoomPreview(0); }
-function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) { currentPreviewContext = contextObj; document.getElementById('previewPageTitle').innerText = title; document.getElementById('previewContent').innerHTML = contentHtml; const btnEdit = document.getElementById('prevBtnEdit'); const btnDel = document.getElementById('prevBtnDelete'); if(onEdit) { btnEdit.classList.remove('d-none'); btnEdit.onclick = onEdit; } else { btnEdit.classList.add('d-none'); } if(onDelete) { btnDel.classList.remove('d-none'); btnDel.onclick = onDelete; } else { btnDel.classList.add('d-none'); } const btnFilter = document.getElementById('btnOpenFilter'); if (btnFilter) { if (contextObj.type === 'Statement') { btnFilter.classList.remove('d-none'); } else { btnFilter.classList.add('d-none'); } } showView('previewView'); setTimeout(setInitialZoom, 50); }
+function zoomPreview(delta) { 
+    currentZoom += delta; if(currentZoom < 0.3) currentZoom = 0.3; if(currentZoom > 2.5) currentZoom = 2.5; 
+    const scaleWrapper = document.getElementById('previewScaleWrapper'); const content = document.getElementById('previewContent'); 
+    scaleWrapper.style.transform = `scale(${currentZoom})`; scaleWrapper.style.width = (content.offsetWidth * currentZoom) + 'px'; scaleWrapper.style.height = (content.offsetHeight * currentZoom) + 'px'; 
+}
+
+function setInitialZoom() { 
+    const bodyWrapper = document.getElementById('previewBodyWrapper'); const bodyWidth = bodyWrapper.clientWidth - 20; const a4WidthPx = 210 * 3.779527; 
+    if(bodyWidth < a4WidthPx) { currentZoom = bodyWidth / a4WidthPx; } else { currentZoom = 1; } 
+    zoomPreview(0); 
+}
+
+function setupPreviewPage(title, contentHtml, contextObj, onEdit, onDelete) { 
+    currentPreviewContext = contextObj; document.getElementById('previewPageTitle').innerText = title; document.getElementById('previewContent').innerHTML = contentHtml; 
+    const btnEdit = document.getElementById('prevBtnEdit'); const btnDel = document.getElementById('prevBtnDelete'); 
+    if(onEdit) { btnEdit.classList.remove('d-none'); btnEdit.onclick = onEdit; } else { btnEdit.classList.add('d-none'); } 
+    if(onDelete) { btnDel.classList.remove('d-none'); btnDel.onclick = onDelete; } else { btnDel.classList.add('d-none'); } 
+    const btnFilter = document.getElementById('btnOpenFilter'); 
+    if (btnFilter) { if (contextObj.type === 'Statement') { btnFilter.classList.remove('d-none'); } else { btnFilter.classList.add('d-none'); } } 
+    showView('previewView'); setTimeout(setInitialZoom, 50); 
+}
 
 async function sharePDF() {
     const shareBtn = document.getElementById('prevBtnShare'); const originalText = shareBtn.innerHTML; shareBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...'; shareBtn.disabled = true;
@@ -180,7 +229,6 @@ function openInvoicePreview(invId) {
   let items = loadedData.invoiceItems.filter(i => i['Invoice ID'] === invId); let itemsHtml = items.map(i => `<tr><td><strong class="text-dark">${i.Name}</strong><br><span class="text-muted">${i.Description}</span></td><td>${parseFloat(i.Rate).toFixed(2)}</td><td>${i.Quantity}</td><td class="text-end fw-bold">${parseFloat(i.Amount).toFixed(2)}</td></tr>`).join('');
   let contactHtml = client ? `${client['Contact Name'] || ''}<br>${client.Mobile || ''}<br>${client.Email || ''}` : ''; let advanceRow = ''; if (bal < 0) { bal = 0; advanceRow = `<tr class="bg-light text-success"><td><h6 class="mt-2 fw-bold mb-2">Overpaid / Advance</h6></td><td><h6 class="mt-2 fw-bold mb-2">${Math.abs(inv.balance).toFixed(2)}</h6></td></tr>`; }
   
-  // Format Due Date for display
   let dueDateHtml = inv['Due Date'] ? `<p class="mb-0"><span class="text-muted fw-bold me-1">Due Date:</span> <span>${inv['Due Date']}</span></p>` : '';
 
   let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #4f46e5; letter-spacing: -0.5px;">INVOICE</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Invoice #:</span> <span class="fw-bold">${inv['Invoice Number']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${inv.Date}</span></p>${dueDateHtml}</div></div><div class="row mb-3"><div class="col-12"><p class="text-muted fw-bold mb-1" style="letter-spacing: 0.5px;">BILLED TO</p><h6 class="fw-bold text-dark">${inv['Client Name']}</h6><div class="text-muted" style="line-height: 1.4;">${contactHtml}</div></div></div><table class="table table-sm table-bordered border-dark"><thead style="background-color: #f8fafc;"><tr><th>Description</th><th style="width: 15%;">Rate</th><th style="width: 10%;">Qty</th><th class="text-end" style="width: 20%;">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="row"><div class="col-6"></div><div class="col-6"><table class="table table-sm table-borderless text-end mb-0"><tr><td class="text-muted">Subtotal</td><td>${parseFloat(inv['Total Amount']||0).toFixed(2)}</td></tr><tr><td class="text-muted">Discount</td><td>${parseFloat(inv['Discount']||0).toFixed(2)}</td></tr><tr class="border-bottom border-dark"><td class="text-muted">Round Off</td><td>${parseFloat(inv['Round Off']||0).toFixed(2)}</td></tr><tr><td class="fw-bold text-dark pt-2">Net Total</td><td class="fw-bold text-dark pt-2">${net.toFixed(2)}</td></tr><tr><td class="text-muted pb-2">Amount Paid</td><td class="text-success pb-2">${paid.toFixed(2)}</td></tr><tr style="background-color: #f8fafc;"><td><h6 class="mt-2 fw-bold text-dark mb-2">Balance Due</h6></td><td><h6 class="mt-2 fw-bold text-dark mb-2">${bal.toFixed(2)}</h6></td></tr>${advanceRow}</table></div></div><div class="row print-footer align-items-end mt-4 pt-4"><div class="col-7"><p class="text-dark fw-bold mb-1">Terms & Conditions</p><p class="text-muted" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Terms'] || 'Thank you for your business!'}</p></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
@@ -209,44 +257,37 @@ function generateStatementPreview() {
   setupPreviewPage('Statement Preview', html, { type: 'Statement', id: currentStmtClient.Name.substring(0,6), clientName: currentStmtClient.Name }, null, null );
 }
 
+// --- ACTION MODAL (MOBILE RESTORED!) ---
+function showActionModal(type, id) {
+  const body = document.getElementById('actionModalBody'); let html = '';
+  if (type === 'client') {
+    html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openAddReceipt(null, '${id}')"><i class="bi bi-cash-stack me-3 text-success"></i> Record Receipt</button>`;
+    html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openStatement('${id}')"><i class="bi bi-journal-text me-3 text-info"></i> View Statement</button>`;
+    html += `<button class="btn btn-light border w-100 text-start py-2" onclick="closeActionModal(); openEditClient('${id}')"><i class="bi bi-pencil me-3 text-secondary"></i> Edit Client</button>`;
+  } else if (type === 'service') {
+    html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openEditService('${id}')"><i class="bi bi-pencil me-3 text-secondary"></i> Edit Service</button>`;
+    html += `<button class="btn btn-light border w-100 text-start py-2 text-danger" onclick="closeActionModal(); confirmDelete('service', '${id}')"><i class="bi bi-trash me-3"></i> Delete Service</button>`;
+  }
+  body.innerHTML = html; new bootstrap.Modal(document.getElementById('actionModal')).show();
+}
+function closeActionModal() { const modal = bootstrap.Modal.getInstance(document.getElementById('actionModal')); if(modal) modal.hide(); }
+
 // --- RENDER TABLES WITH LIVE SEARCH AND OVERDUE CHECK ---
 function renderTables() {
-  renderDashboard(); // Always update dashboard when tables re-render
+  renderDashboard(); 
 
   const searchInv = document.getElementById('searchInvoices')?.value.toLowerCase() || '';
   const filteredInvoices = loadedData.invoices.filter(i => i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv));
   
   document.getElementById('invoiceTableBody').innerHTML = filteredInvoices.map(i => {
-    
-    // OVERDUE LOGIC
-    let isOverdue = false;
-    let dueDateStr = i['Due Date'] || i.dueDate; 
+    let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
     if(!dueDateStr) { let d = new Date(i.Date); d.setDate(d.getDate() + 15); dueDateStr = d; }
     if(i.balance > 0 && new Date(dueDateStr) < new Date(new Date().setHours(0,0,0,0))) isOverdue = true;
 
     let status = i.balance <= 0 ? '<span class="badge-paid">Paid</span>' : (isOverdue ? '<span class="badge-due text-white bg-danger">Overdue</span>' : '<span class="badge-due">Due</span>');
     let netAmt = (parseFloat(i['Net Amount']) || 0).toFixed(2); let balText = i.balance > 0 ? `<div class="small fw-bold text-danger">Bal: ${i.balance.toFixed(2)}</div>` : '';
     
-    return `<tr onclick="openInvoicePreview('${i['Invoice ID']}')">
-      <td class="d-none d-md-table-cell fw-bold text-primary">${i['Invoice Number']}</td>
-      <td class="d-none d-md-table-cell text-muted">${i.Date}</td>
-      <td class="d-none d-md-table-cell fw-medium">${i['Client Name']}</td>
-      <td class="d-none d-md-table-cell text-muted">${netAmt}</td>
-      <td class="d-none d-md-table-cell fw-bold">${i.balance > 0 ? i.balance.toFixed(2) : '0.00'}</td>
-      <td class="d-none d-md-table-cell">${status}</td>
-      <td class="d-none d-md-table-cell text-end text-nowrap">
-        ${i.balance > 0 ? `<button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')" title="Send WhatsApp Reminder"><i class="bi bi-whatsapp"></i></button>` : ''}
-        <button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button>
-      </td>
-      <td class="d-md-none p-0">
-        <div class="p-3 pb-2">
-            <div class="d-flex justify-content-between mb-1"><span class="fw-bold text-primary">${i['Invoice Number']}</span><span class="text-muted small">${i.Date}</span></div>
-            <div class="text-wrap fw-medium small mb-2">${i['Client Name']}</div>
-            <div class="d-flex justify-content-between align-items-end"><div><div class="small fw-bold">Amt: ${netAmt}</div>${balText}</div><div>${status}</div></div>
-        </div>
-        ${i.balance > 0 ? `<div class="d-flex border-top"><button class="btn btn-light w-50 rounded-0 py-2 border-end text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')"><i class="bi bi-cash-stack"></i> Receipt</button><button class="btn btn-light w-50 rounded-0 py-2 text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')"><i class="bi bi-whatsapp"></i> Remind</button></div>` : ''}
-      </td>
-    </tr>`;
+    return `<tr onclick="openInvoicePreview('${i['Invoice ID']}')"><td class="d-none d-md-table-cell fw-bold text-primary">${i['Invoice Number']}</td><td class="d-none d-md-table-cell text-muted">${i.Date}</td><td class="d-none d-md-table-cell fw-medium">${i['Client Name']}</td><td class="d-none d-md-table-cell text-muted">${netAmt}</td><td class="d-none d-md-table-cell fw-bold">${i.balance > 0 ? i.balance.toFixed(2) : '0.00'}</td><td class="d-none d-md-table-cell">${status}</td><td class="d-none d-md-table-cell text-end text-nowrap">${i.balance > 0 ? `<button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')" title="Send WhatsApp Reminder"><i class="bi bi-whatsapp"></i></button>` : ''}<button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-0"><div class="p-3 pb-2"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-primary">${i['Invoice Number']}</span><span class="text-muted small">${i.Date}</span></div><div class="text-wrap fw-medium small mb-2">${i['Client Name']}</div><div class="d-flex justify-content-between align-items-end"><div><div class="small fw-bold">Amt: ${netAmt}</div>${balText}</div><div>${status}</div></div></div>${i.balance > 0 ? `<div class="d-flex border-top"><button class="btn btn-light w-50 rounded-0 py-2 border-end text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')"><i class="bi bi-cash-stack"></i> Receipt</button><button class="btn btn-light w-50 rounded-0 py-2 text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')"><i class="bi bi-whatsapp"></i> Remind</button></div>` : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="7" class="text-center text-muted py-4">No invoices found.</td></tr>';
 
   const searchCl = document.getElementById('searchClients')?.value.toLowerCase() || '';
