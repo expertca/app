@@ -4,7 +4,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
-let currentPreviewContext = {}; // Stores details for Sharing PDF names
+let currentPreviewContext = {}; 
 
 // --- VIEW ROUTING (SPA Mode) ---
 function showView(viewId) {
@@ -316,6 +316,12 @@ function openReceiptPreview(recId) {
        () => openEditReceipt(recId), 
        () => confirmDelete('receipt', recId)
     );
+}
+
+// RESTORED CUSTOM DATES TOGGLE FUNCTION
+function toggleCustomDates() {
+  const val = document.getElementById('stmtFilter').value;
+  document.getElementById('customDateRange').className = val === 'custom' ? 'row mb-3' : 'd-none row mb-3';
 }
 
 function openStatement(clientId) {
