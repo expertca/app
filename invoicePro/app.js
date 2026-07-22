@@ -1,14 +1,29 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
 const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec";
+
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
 let currentPreviewContext = {}; 
 let revenueChartInstance = null; 
 
+// --- CUSTOM ALERT & CONFIRM FUNCTIONS ---
 function customAlert(message) { 
     document.getElementById('alertMessage').innerText = message; 
     new bootstrap.Modal(document.getElementById('alertModal')).show(); 
+}
+
+function confirmDelete(type, id) {
+    document.getElementById('confirmMessage').innerText = `Delete this ${type}?\nLinked records will also be removed.`;
+    const confirmModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+    
+    document.getElementById('confirmBtnYes').onclick = () => {
+        confirmModal.hide();
+        showView('dashboardView');
+        executeSave('deleteRecord', type, id);
+    };
+    
+    confirmModal.show();
 }
 
 function showView(viewId) {
@@ -82,7 +97,6 @@ window.addEventListener('offline', () => updateSyncStatus('Offline'));
 function saveToQueue(action, params) { if(!db) return; try { let tx = db.transaction('syncQueue', 'readwrite'); tx.objectStore('syncQueue').add({ id: Date.now().toString(), action: action, params: params }); updateSyncStatus('Pending'); } catch(e){} }
 function processQueue() { if (!navigator.onLine || !db) return; try { let tx = db.transaction('syncQueue', 'readonly'); let req = tx.objectStore('syncQueue').getAll(); req.onsuccess = () => { let queue = req.result; if (queue.length === 0) return; updateSyncStatus('Syncing...'); let item = queue[0]; apiCall(item.action, ...item.params).then(() => { let dTx = db.transaction('syncQueue', 'readwrite'); dTx.objectStore('syncQueue').delete(item.id); dTx.oncomplete = () => processQueue(); }).catch(() => updateSyncStatus('Offline')); }; } catch(e){} }
 function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch(() => { saveToQueue(action, params); }); }
-function confirmDelete(type, id) { if(confirm(`Delete this ${type}? Linked records will also be removed.`)) { showView('dashboardView'); executeSave('deleteRecord', type, id); } }
 
 function optimisticUpdate(action, params) {
   let m = document.querySelector('.modal.show'); if(m) bootstrap.Modal.getInstance(m).hide();
@@ -123,7 +137,6 @@ function populateDropdowns() {
   let rList = document.getElementById('receiptClientList'); if(rList) { rList.innerHTML = ''; loadedData.clients.forEach(c => rList.innerHTML += `<option value="${c.Name}">`); }
 }
 
-// --- NEW DASHBOARD RENDERING LOGIC ---
 function renderDashboard() {
     let totalDue = 0; let totalRevThisYear = 0; let overdueCount = 0;
     const now = new Date(); const currentYear = now.getFullYear();
