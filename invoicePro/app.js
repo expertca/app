@@ -104,16 +104,18 @@ function optimisticUpdate(action, params) {
   if(action === 'addClient') loadedData.clients.push({ ID: tempId, Name: params[0], 'Contact Name': params[1], Email: params[2], Mobile: params[3] });
   else if(action === 'addService') loadedData.services.push({ ID: tempId, Name: params[0], Description: params[1], Rate: params[2] });
   else if(action === 'addReceipt') loadedData.receipts.push({ 'Receipt ID': params[4] || tempId, 'Invoice ID': params[0], Date: params[1], Amount: params[2], 'Payment Mode': params[3], 'Client ID': params[5] });
-  else if(action === 'addInvoice') {
+  else if(action === 'addInvoice') { 
       let tempId = params[0].tempId || 'TMP-' + Date.now().toString().substring(5);
-
-    // Pushes all totals so offline preview works perfectly
-    loadedData.invoices.push({ 'Invoice ID': tempId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
-
-    // Caches the items offline instantly
-    params[1].forEach(item => {
-        loadedData.invoiceItems.push({ 'Invoice ID': tempId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount });
-    });
+      
+      // Fixed: Now pushes the missing offline totals
+      loadedData.invoices.push({ 'Invoice ID': tempId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
+      
+      // Fixed: Now pushes the items array so the offline PDF preview works
+      if(params[1]) {
+          params[1].forEach(item => {
+              loadedData.invoiceItems.push({ 'Invoice ID': tempId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount });
+          });
+      }
   }
   else if (action === 'deleteRecord') {
     let type = params[0]; let id = params[1];
