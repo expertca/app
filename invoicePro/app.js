@@ -353,8 +353,47 @@ function addItem() { const s = loadedData.services.find(x => x.Name === document
 function removeItem(index) { invoiceItems.splice(index, 1); renderItems(); }
 function renderItems() { let tbody = document.getElementById('itemList'); tbody.innerHTML = ''; let total = 0; invoiceItems.forEach((i, idx) => { tbody.innerHTML += `<tr><td class="text-wrap" style="max-width: 200px;"><div class="fw-bold" style="font-size:0.85rem;">${i.name}</div><div class="text-muted" style="font-size:0.75rem;">${i.description}</div></td><td class="align-middle">${i.rate}</td><td class="align-middle">${i.quantity}</td><td class="text-end fw-medium align-middle">${i.amount.toFixed(2)}</td><td class="text-end align-middle"><button class="btn btn-sm text-danger border-0 bg-transparent" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></td></tr>`; total += i.amount; }); document.getElementById('inv_total').value = total.toFixed(2); calculateNet(); }
 function calculateNet() { let t = parseFloat(document.getElementById('inv_total').value) || 0; let d = parseFloat(document.getElementById('inv_disc').value) || 0; let r = parseFloat(document.getElementById('inv_round').value) || 0; document.getElementById('inv_net').value = (t - d + r).toFixed(2); }
-function saveInvoice() { const invId = document.getElementById('inv_id').value; const client = loadedData.clients.find(c => c.Name === document.getElementById('inv_client').value.trim()); if(!client) return customAlert("Select a valid client!"); if(invoiceItems.length === 0) return customAlert("Add at least one item!"); const invData = { clientId: client.ID, clientName: client.Name, date: document.getElementById('inv_date').value, dueDate: document.getElementById('inv_due_date').value, invNum: document.getElementById('inv_num').value, totalAmount: document.getElementById('inv_total').value, discount: document.getElementById('inv_disc').value, roundOff: document.getElementById('inv_round').value, netAmount: document.getElementById('inv_net').value }; if(invId) executeSave('updateInvoice', invId, invData, invoiceItems); else executeSave('addInvoice', invData, invoiceItems); showView('dashboardView'); }
+function saveInvoice() { 
+    const invId = document.getElementById('inv_id').value; 
+    const client = loadedData.clients.find(c => c.Name === document.getElementById('inv_client').value.trim()); 
+    if(!client) return customAlert("Select a valid client!"); 
+    if(invoiceItems.length === 0) return customAlert("Add at least one item!"); 
+    
+    const invData = { 
+        clientId: client.ID, clientName: client.Name, 
+        date: document.getElementById('inv_date').value, 
+        dueDate: document.getElementById('inv_due_date').value, 
+        invNum: document.getElementById('inv_num').value, 
+        totalAmount: document.getElementById('inv_total').value, 
+        discount: document.getElementById('inv_disc').value, 
+        roundOff: document.getElementById('inv_round').value, 
+        netAmount: document.getElementById('inv_net').value 
+    }; 
+    
+    // --- THE FIX: Capture the Initial Payment inputs ---
+    const initialPaymentAmt = parseFloat(document.getElementById('inv_rec_amount').value) || 0;
+    const initialPaymentMode = document.getElementById('inv_rec_mode').value;
+    
+    let targetInvId = invId;
 
+    if(invId) {
+        executeSave('updateInvoice', invId, invData, invoiceItems); 
+    } else {
+        // Generate Temp ID here so we can attach a receipt to it offline
+        targetInvId = 'TMP-' + Date.now().toString().substring(5);
+        invData.tempId = targetInvId; // Passes safely to optimistic offline view
+        executeSave('addInvoice', invData, invoiceItems); 
+    }
+    
+    // --- THE FIX: Automatically chain the receipt creation if payment was typed ---
+    if (initialPaymentAmt > 0) {
+        let recNum = generateReceiptNum();
+        executeSave('addReceipt', targetInvId, invData.date, initialPaymentAmt, initialPaymentMode, recNum, client.ID);
+    }
+    
+    document.getElementById('inv_rec_amount').value = ''; // Reset UI payment field
+    showView('dashboardView'); 
+}
 function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.length === 0) return "REC-0001"; let max = 0; loadedData.receipts.forEach(r => { let match = String(r['Receipt ID']).match(/(\d+)$/); if(match && parseInt(match[1]) > max) max = parseInt(match[1]); }); return "REC-" + (max + 1).toString().padStart(4, '0'); }
 function filterInvoicesForReceipt() { let clientName = document.getElementById('rec_client_input').value.trim(); let clientObj = loadedData.clients.find(c => c.Name === clientName); let sel = document.getElementById('rec_invoice'); sel.innerHTML = '<option value="">None (Advance Payment)</option>'; document.getElementById('rec_client_id').value = clientObj ? clientObj.ID : ''; if(!clientObj) return; loadedData.invoices.filter(i => i['Client ID'] === clientObj.ID && i.balance > 0).forEach(inv => { sel.innerHTML += `<option value="${inv['Invoice ID']}">${inv['Invoice Number']} (Bal: ${inv.balance.toFixed(2)})</option>`; }); }
 function openAddReceipt(forceInvId = null, forceClientId = null) { document.getElementById('r_id').value = ''; document.getElementById('rec_num').value = generateReceiptNum(); document.getElementById('rec_client_input').value = ''; if(forceInvId) { let inv = loadedData.invoices.find(i => i['Invoice ID'] === forceInvId); document.getElementById('rec_client_input').value = inv['Client Name']; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = forceInvId; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; } else if (forceClientId) { let cl = loadedData.clients.find(c => c.ID === forceClientId); document.getElementById('rec_client_input').value = cl.Name; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = false; } else { document.getElementById('rec_client_input').disabled = false; document.getElementById('rec_client_clear').disabled = false; document.getElementById('rec_invoice').disabled = false; filterInvoicesForReceipt(); } document.getElementById('rec_date').valueAsDate = new Date(); document.getElementById('rec_amount').value = ''; document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; new bootstrap.Modal(document.getElementById('receiptModal')).show(); }
