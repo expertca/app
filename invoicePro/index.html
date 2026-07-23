@@ -170,7 +170,7 @@
   </div>
 </div>
 
-<!-- ================= 2. INVOICE FORM VIEW (PAGE) ================= -->
+<!-- ================= 2. INVOICE FORM VIEW ================= -->
 <div id="invoiceFormView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center gap-3">
@@ -281,7 +281,80 @@
   </div>
 </div>
 
-<!-- ================= 3. UNIVERSAL PREVIEW VIEW (PAGE) ================= -->
+<!-- ================= 3. CLIENT FORM VIEW ================= -->
+<div id="clientFormView" class="app-view d-none d-print-none pb-5">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="clientModalTitle">Add Client</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl max-w-xl mx-auto">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="c_id">
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Client Name *</label><input type="text" id="c_name" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div>
+      <div class="row">
+         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div>
+         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 4. SERVICE FORM VIEW ================= -->
+<div id="serviceFormView" class="app-view d-none d-print-none pb-5">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="serviceModalTitle">Add Service</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4" onclick="saveService()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl max-w-xl mx-auto">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="s_id">
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 5. RECEIPT FORM VIEW ================= -->
+<div id="receiptFormView" class="app-view d-none d-print-none pb-5">
+  <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="receiptModalTitle">Record Receipt</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl max-w-xl mx-auto">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="r_id">
+      <input type="hidden" id="rec_client_id">
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Receipt Number</label><input type="text" id="rec_num" class="form-control"></div>
+      <div class="mb-3">
+          <label class="form-label text-muted small fw-bold">Client *</label>
+          <div class="input-group">
+             <input class="form-control" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client...">
+             <button class="btn btn-outline-secondary bg-white border-start-0" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button>
+          </div>
+          <datalist id="receiptClientList"></datalist>
+      </div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Link Invoice (Optional)</label><select id="rec_invoice" class="form-select"><option value="">Unlinked (Advance Payment)</option></select></div>
+      <div class="row mb-3">
+          <div class="col-6"><label class="form-label text-muted small fw-bold">Date</label><input type="date" id="rec_date" class="form-control"></div>
+          <div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div>
+      </div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 6. UNIVERSAL PREVIEW VIEW ================= -->
 <div id="previewView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex flex-wrap justify-content-between align-items-center gap-2 z-3">
     <div class="d-flex align-items-center gap-3">
@@ -320,34 +393,19 @@
 
 <!-- ================= MINOR MODALS ================= -->
 <div class="modal fade" id="actionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm align-items-end"><div class="modal-content border-0"><div class="modal-header border-0 pb-1"><h6 class="modal-title fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Choose Action</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body d-flex flex-column gap-2 pt-0" id="actionModalBody"></div></div></div></div>
-<div class="modal fade" id="clientModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="clientModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="c_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Client Name *</label><input type="text" id="c_name" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div><div class="row"><div class="col-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div><div class="col-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control"></div></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveClient()">Save Client</button></div></div></div></div>
-<div class="modal fade" id="serviceModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="serviceModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="s_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveService()">Save Service</button></div></div></div></div>
-<div class="modal fade" id="receiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold" id="receiptModalTitle">Record Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="r_id"><input type="hidden" id="rec_client_id"><div class="mb-3"><label class="form-label text-muted small fw-bold">Receipt Number</label><input type="text" id="rec_num" class="form-control"></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Client <span class="text-danger">*</span></label><div class="input-group"><input class="form-control" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client..."><button class="btn btn-outline-secondary bg-white border-start-0" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button></div><datalist id="receiptClientList"></datalist></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Link Invoice (Optional)</label><select id="rec_invoice" class="form-select"><option value="">Unlinked (Advance Payment)</option></select></div><div class="row mb-3"><div class="col-6"><label class="form-label text-muted small fw-bold">Date</label><input type="date" id="rec_date" class="form-control"></div><div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div></div><div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div></div><div class="modal-footer"><button class="btn btn-primary w-100 py-2" onclick="saveReceipt()">Save Receipt</button></div></div></div></div>
 
 <div class="modal fade" id="filterModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0">
-        <h6 class="modal-title fw-bold text-primary">Filter Statement</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+      <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">Filter Statement</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body pb-2">
-        <select class="form-select form-select-sm mb-3" id="previewStmtFilter" onchange="handlePreviewFilterChange()">
-          <option value="all">All Time</option>
-          <option value="3m" selected>Last 3 Months</option>
-          <option value="6m">Last 6 Months</option>
-          <option value="ty">This Year</option>
-          <option value="ly">Last Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
+        <select class="form-select form-select-sm mb-3" id="previewStmtFilter" onchange="handlePreviewFilterChange()"><option value="all">All Time</option><option value="3m" selected>Last 3 Months</option><option value="6m">Last 6 Months</option><option value="ty">This Year</option><option value="ly">Last Year</option><option value="custom">Custom Range</option></select>
         <div id="previewCustomDates" class="d-none">
           <div class="mb-2"><label class="small text-muted fw-bold">Start Date</label><input type="date" id="prevStartDate" class="form-control form-control-sm"></div>
           <div class="mb-2"><label class="small text-muted fw-bold">End Date</label><input type="date" id="prevEndDate" class="form-control form-control-sm"></div>
         </div>
       </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-primary btn-sm w-100 py-2" onclick="applyStatementFilter()">Apply Filter</button>
-      </div>
+      <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-primary btn-sm w-100 py-2" onclick="applyStatementFilter()">Apply Filter</button></div>
     </div>
   </div>
 </div>
@@ -364,7 +422,6 @@
   </div>
 </div>
 
-<!-- NEW: CUSTOM CONFIRM MODAL -->
 <div class="modal fade" id="confirmModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
@@ -381,7 +438,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Required Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="app.js"></script>
