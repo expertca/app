@@ -7,7 +7,6 @@ let currentStmtClient = null;
 let currentPreviewContext = {}; 
 let revenueChartInstance = null; 
 
-// --- CUSTOM ALERT & CONFIRM FUNCTIONS ---
 function customAlert(message) { 
     document.getElementById('alertMessage').innerText = message; 
     new bootstrap.Modal(document.getElementById('alertModal')).show(); 
@@ -98,31 +97,71 @@ function saveToQueue(action, params) { if(!db) return; try { let tx = db.transac
 function processQueue() { if (!navigator.onLine || !db) return; try { let tx = db.transaction('syncQueue', 'readonly'); let req = tx.objectStore('syncQueue').getAll(); req.onsuccess = () => { let queue = req.result; if (queue.length === 0) return; updateSyncStatus('Syncing...'); let item = queue[0]; apiCall(item.action, ...item.params).then(() => { let dTx = db.transaction('syncQueue', 'readwrite'); dTx.objectStore('syncQueue').delete(item.id); dTx.oncomplete = () => processQueue(); }).catch(() => updateSyncStatus('Offline')); }; } catch(e){} }
 function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch(() => { saveToQueue(action, params); }); }
 
+// --- FIXED OPTIMISTIC UPDATE ---
 function optimisticUpdate(action, params) {
-  let m = document.querySelector('.modal.show'); if(m) bootstrap.Modal.getInstance(m).hide();
+  // Safe modal hide to prevent real-time crash glitches
+  let m = document.querySelector('.modal.show'); 
+  if(m) {
+      let inst = bootstrap.Modal.getInstance(m);
+      if(inst) inst.hide();
+  }
+  
   const tempId = 'TMP-' + Date.now().toString().substring(5);
+  
   if(action === 'addClient') loadedData.clients.push({ ID: tempId, Name: params[0], 'Contact Name': params[1], Email: params[2], Mobile: params[3] });
   else if(action === 'addService') loadedData.services.push({ ID: tempId, Name: params[0], Description: params[1], Rate: params[2] });
   else if(action === 'addReceipt') loadedData.receipts.push({ 'Receipt ID': params[4] || tempId, 'Invoice ID': params[0], Date: params[1], Amount: params[2], 'Payment Mode': params[3], 'Client ID': params[5] });
   else if(action === 'addInvoice') { 
-      let tempId = params[0].tempId || 'TMP-' + Date.now().toString().substring(5);
+      let tId = params[0].tempId || tempId;
+      loadedData.invoices.push({ 'Invoice ID': tId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
       
-      // Fixed: Now pushes the missing offline totals
-      loadedData.invoices.push({ 'Invoice ID': tempId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
-      
-      // Fixed: Now pushes the items array so the offline PDF preview works
       if(params[1]) {
           params[1].forEach(item => {
-              loadedData.invoiceItems.push({ 'Invoice ID': tempId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount });
+              loadedData.invoiceItems.push({ 'Invoice ID': tId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount });
           });
       }
+      
+      // Predict receipt creation if passed
+      if(params[2]) {
+          loadedData.receipts.push({ 'Receipt ID': params[2].recNum, 'Invoice ID': tId, Date: params[2].date, Amount: params[2].amount, 'Payment Mode': params[2].mode, 'Client ID': params[2].clientId });
+      }
+  }
+  else if(action === 'updateClient') {
+      let idx = loadedData.clients.findIndex(c => String(c.ID) === String(params[0]));
+      if(idx > -1) { loadedData.clients[idx].Name = params[1]; loadedData.clients[idx]['Contact Name'] = params[2]; loadedData.clients[idx].Email = params[3]; loadedData.clients[idx].Mobile = params[4]; }
+  }
+  else if(action === 'updateService') {
+      let idx = loadedData.services.findIndex(s => String(s.ID) === String(params[0]));
+      if(idx > -1) { loadedData.services[idx].Name = params[1]; loadedData.services[idx].Description = params[2]; loadedData.services[idx].Rate = params[3]; }
+  }
+  else if(action === 'updateReceipt') {
+      let idx = loadedData.receipts.findIndex(r => String(r['Receipt ID']) === String(params[0]));
+      if(idx > -1) { loadedData.receipts[idx]['Invoice ID'] = params[1]; loadedData.receipts[idx].Date = params[2]; loadedData.receipts[idx].Amount = params[3]; loadedData.receipts[idx]['Payment Mode'] = params[4]; loadedData.receipts[idx]['Client ID'] = params[6]; }
+  }
+  else if(action === 'updateInvoice') {
+      let idx = loadedData.invoices.findIndex(i => String(i['Invoice ID']) === String(params[0]));
+      if(idx > -1) {
+          loadedData.invoices[idx]['Client ID'] = params[1].clientId;
+          loadedData.invoices[idx]['Client Name'] = params[1].clientName;
+          loadedData.invoices[idx].Date = params[1].date;
+          loadedData.invoices[idx]['Due Date'] = params[1].dueDate;
+          loadedData.invoices[idx]['Invoice Number'] = params[1].invNum;
+          loadedData.invoices[idx]['Total Amount'] = params[1].totalAmount;
+          loadedData.invoices[idx]['Discount'] = params[1].discount;
+          loadedData.invoices[idx]['Round Off'] = params[1].roundOff;
+          loadedData.invoices[idx]['Net Amount'] = params[1].netAmount;
+      }
+      loadedData.invoiceItems = loadedData.invoiceItems.filter(i => String(i['Invoice ID']) !== String(params[0]));
+      params[2].forEach(item => {
+          loadedData.invoiceItems.push({ 'Invoice ID': params[0], 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount });
+      });
   }
   else if (action === 'deleteRecord') {
-    let type = params[0]; let id = params[1];
-    if(type === 'client') { loadedData.clients = loadedData.clients.filter(c => c.ID !== id); let invIds = loadedData.invoices.filter(i => i['Client ID'] === id).map(i => i['Invoice ID']); loadedData.invoices = loadedData.invoices.filter(i => i['Client ID'] !== id); loadedData.receipts = loadedData.receipts.filter(r => !invIds.includes(r['Invoice ID']) && r['Client ID'] !== id); }
-    else if(type === 'invoice') { loadedData.invoices = loadedData.invoices.filter(i => i['Invoice ID'] !== id); loadedData.receipts = loadedData.receipts.filter(r => r['Invoice ID'] !== id); }
-    else if(type === 'service') { loadedData.services = loadedData.services.filter(s => s.ID !== id); }
-    else if(type === 'receipt') { loadedData.receipts = loadedData.receipts.filter(r => r['Receipt ID'] !== id); }
+    let type = params[0]; let id = String(params[1]);
+    if(type === 'client') { loadedData.clients = loadedData.clients.filter(c => String(c.ID) !== id); let invIds = loadedData.invoices.filter(i => String(i['Client ID']) === id).map(i => i['Invoice ID']); loadedData.invoices = loadedData.invoices.filter(i => String(i['Client ID']) !== id); loadedData.receipts = loadedData.receipts.filter(r => !invIds.includes(r['Invoice ID']) && String(r['Client ID']) !== id); }
+    else if(type === 'invoice') { loadedData.invoices = loadedData.invoices.filter(i => String(i['Invoice ID']) !== id); loadedData.receipts = loadedData.receipts.filter(r => String(r['Invoice ID']) !== id); loadedData.invoiceItems = loadedData.invoiceItems.filter(i => String(i['Invoice ID']) !== id); }
+    else if(type === 'service') { loadedData.services = loadedData.services.filter(s => String(s.ID) !== id); }
+    else if(type === 'receipt') { loadedData.receipts = loadedData.receipts.filter(r => String(r['Receipt ID']) !== id); }
   }
   saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns();
 }
@@ -205,7 +244,6 @@ function sendWhatsAppReminder(invId) {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
-// --- UNIVERSAL PREVIEW & PDF LOGIC ---
 let currentZoom = 1;
 function zoomPreview(delta) { 
     currentZoom += delta; if(currentZoom < 0.3) currentZoom = 0.3; if(currentZoom > 2.5) currentZoom = 2.5; 
@@ -267,22 +305,35 @@ function openReceiptPreview(recId) {
     setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: rec['Receipt ID'], clientName: clientName }, () => openEditReceipt(recId), () => confirmDelete('receipt', recId));
 }
 
-// --- STATEMENT PREVIEW LOGIC ---
 function openStatement(clientId) { currentStmtClient = loadedData.clients.find(c => c.ID === clientId); if(!currentStmtClient) return; document.getElementById('previewStmtFilter').value = '3m'; document.getElementById('previewCustomDates').classList.add('d-none'); generateStatementPreview(); }
 function handlePreviewFilterChange() { const val = document.getElementById('previewStmtFilter').value; if(val === 'custom') { document.getElementById('previewCustomDates').classList.remove('d-none'); } else { document.getElementById('previewCustomDates').classList.add('d-none'); } }
 function applyStatementFilter() { const modal = bootstrap.Modal.getInstance(document.getElementById('filterModal')); if (modal) modal.hide(); generateStatementPreview(); }
 
 function generateStatementPreview() {
   if(!currentStmtClient) return; const filter = document.getElementById('previewStmtFilter').value; const now = new Date(); let startDate = new Date(0); let endDate = new Date('2099-01-01');
-  if(filter === '3m') startDate = new Date(now.setMonth(now.getMonth() - 3)); else if(filter === '6m') startDate = new Date(now.setMonth(now.getMonth() - 6)); else if(filter === 'ty') startDate = new Date(new Date().getFullYear(), 0, 1); else if(filter === 'ly') { startDate = new Date(new Date().getFullYear() - 1, 0, 1); endDate = new Date(new Date().getFullYear() - 1, 11, 31, 23, 59, 59); } else if(filter === 'custom') { if(document.getElementById('prevStartDate').value) startDate = new Date(document.getElementById('prevStartDate').value); if(document.getElementById('prevEndDate').value) { endDate = new Date(document.getElementById('prevEndDate').value); endDate.setHours(23, 59, 59); } }
-  let stmtData = []; loadedData.invoices.forEach(i => { let d = new Date(i.Date); if(i['Client ID'] === currentStmtClient.ID && d >= startDate && d <= endDate) { stmtData.push({ date: d, type: 'Invoice', ref: i['Invoice Number'], amount: parseFloat(i['Net Amount']) }); } }); loadedData.receipts.forEach(r => { let inv = loadedData.invoices.find(i => i['Invoice ID'] === r['Invoice ID']); let d = new Date(r.Date); let isForClient = (inv && inv['Client ID'] === currentStmtClient.ID) || (r['Client ID'] === currentStmtClient.ID); if(isForClient && d >= startDate && d <= endDate) { stmtData.push({ date: d, type: 'Receipt', ref: r['Receipt ID'], amount: -parseFloat(r.Amount) }); } }); stmtData.sort((a, b) => a.date - b.date);
-  let tbody = ''; let runTotal = 0; stmtData.forEach(row => { runTotal += row.amount; tbody += `<tr><td>${row.date.toLocaleDateString()}</td><td><span class="badge ${row.type==='Invoice'?'bg-primary':'bg-success'}">${row.type}</span></td><td>${row.ref}</td><td class="text-end ${row.amount < 0 ? 'text-success' : 'text-danger'}">${Math.abs(row.amount).toFixed(2)}</td><td class="text-end fw-bold">${runTotal.toFixed(2)}</td></tr>`; }); if(!tbody) tbody = '<tr><td colspan="5" class="text-center text-muted py-4">No records found for this period.</td></tr>';
+  
+  if(filter === '3m') startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); 
+  else if(filter === '6m') startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()); 
+  else if(filter === 'ty') startDate = new Date(now.getFullYear(), 0, 1); 
+  else if(filter === 'ly') { startDate = new Date(now.getFullYear() - 1, 0, 1); endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59); } 
+  else if(filter === 'custom') { if(document.getElementById('prevStartDate').value) startDate = new Date(document.getElementById('prevStartDate').value); if(document.getElementById('prevEndDate').value) { endDate = new Date(document.getElementById('prevEndDate').value); endDate.setHours(23, 59, 59); } }
+  
+  let stmtData = []; let openingBalance = 0;
+  loadedData.invoices.forEach(i => { if(i['Client ID'] === currentStmtClient.ID) { let d = new Date(i.Date); let amt = parseFloat(i['Net Amount']) || 0; if (d < startDate) { openingBalance += amt; } else if (d <= endDate) { stmtData.push({ date: d, type: 'Invoice', ref: i['Invoice Number'], amount: amt }); } } }); 
+  loadedData.receipts.forEach(r => { let inv = loadedData.invoices.find(i => i['Invoice ID'] === r['Invoice ID']); let isForClient = (inv && inv['Client ID'] === currentStmtClient.ID) || (r['Client ID'] === currentStmtClient.ID); if(isForClient) { let d = new Date(r.Date); let amt = -(parseFloat(r.Amount) || 0); if (d < startDate) { openingBalance += amt; } else if (d <= endDate) { stmtData.push({ date: d, type: 'Receipt', ref: r['Receipt ID'], amount: amt }); } } }); 
+  stmtData.sort((a, b) => a.date - b.date);
+  
+  let tbody = ''; let runTotal = openingBalance; 
+  if (filter !== 'all') { tbody += `<tr class="table-light"><td class="text-muted fst-italic">Prior</td><td colspan="2" class="fw-bold text-muted">OPENING BALANCE</td><td class="text-end"></td><td class="text-end fw-bold ${openingBalance <= 0 ? 'text-success' : 'text-danger'}">${openingBalance.toFixed(2)}</td></tr>`; }
+  
+  stmtData.forEach(row => { runTotal += row.amount; tbody += `<tr><td>${row.date.toLocaleDateString()}</td><td><span class="badge ${row.type==='Invoice'?'bg-primary':'bg-success'}">${row.type}</span></td><td>${row.ref}</td><td class="text-end ${row.amount < 0 ? 'text-success' : 'text-danger'}">${Math.abs(row.amount).toFixed(2)}</td><td class="text-end fw-bold">${runTotal.toFixed(2)}</td></tr>`; }); 
+  if(stmtData.length === 0 && openingBalance === 0) tbody = '<tr><td colspan="5" class="text-center text-muted py-4">No records found for this period.</td></tr>';
+  
   let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
   let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #4f46e5; letter-spacing: -0.5px;">STATEMENT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Client:</span> <span class="fw-bold">${currentStmtClient.Name}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${new Date().toLocaleDateString()}</span></p></div></div><table class="table table-bordered table-sm mt-4"><thead class="table-light"><tr><th>Date</th><th>Type</th><th>Ref #</th><th class="text-end">Amount</th><th class="text-end">Balance</th></tr></thead><tbody>${tbody}</tbody></table><h4 class="text-end fw-bold mt-4 border-top pt-3">Final Balance Due: <span class="${runTotal <= 0 ? 'text-success' : 'text-danger'}">${runTotal.toFixed(2)}</span></h4>`;
   setupPreviewPage('Statement Preview', html, { type: 'Statement', id: currentStmtClient.Name.substring(0,6), clientName: currentStmtClient.Name }, null, null );
 }
 
-// --- ACTION MODAL (MOBILE RESTORED!) ---
 function showActionModal(type, id) {
   const body = document.getElementById('actionModalBody'); let html = '';
   if (type === 'client') {
@@ -297,7 +348,6 @@ function showActionModal(type, id) {
 }
 function closeActionModal() { const modal = bootstrap.Modal.getInstance(document.getElementById('actionModal')); if(modal) modal.hide(); }
 
-// --- RENDER TABLES WITH LIVE SEARCH AND OVERDUE CHECK ---
 function renderTables() {
   renderDashboard(); 
 
@@ -338,7 +388,6 @@ function renderTables() {
   }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">No receipts found.</td></tr>';
 }
 
-// --- CRUD FORMS ---
 function openAddClient() { ['c_id','c_name','c_contact','c_email','c_mobile'].forEach(id => document.getElementById(id).value = ''); new bootstrap.Modal(document.getElementById('clientModal')).show(); }
 function openEditClient(id) { const c = loadedData.clients.find(x => x.ID === id); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile; new bootstrap.Modal(document.getElementById('clientModal')).show(); }
 function saveClient() { const data = ['c_id','c_name','c_contact','c_email','c_mobile'].map(id => document.getElementById(id).value); if(!data[1]) return customAlert("Client name required!"); data[0] ? executeSave('updateClient', ...data) : executeSave('addClient', data[1], data[2], data[3], data[4]); }
@@ -355,6 +404,7 @@ function addItem() { const s = loadedData.services.find(x => x.Name === document
 function removeItem(index) { invoiceItems.splice(index, 1); renderItems(); }
 function renderItems() { let tbody = document.getElementById('itemList'); tbody.innerHTML = ''; let total = 0; invoiceItems.forEach((i, idx) => { tbody.innerHTML += `<tr><td class="text-wrap" style="max-width: 200px;"><div class="fw-bold" style="font-size:0.85rem;">${i.name}</div><div class="text-muted" style="font-size:0.75rem;">${i.description}</div></td><td class="align-middle">${i.rate}</td><td class="align-middle">${i.quantity}</td><td class="text-end fw-medium align-middle">${i.amount.toFixed(2)}</td><td class="text-end align-middle"><button class="btn btn-sm text-danger border-0 bg-transparent" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></td></tr>`; total += i.amount; }); document.getElementById('inv_total').value = total.toFixed(2); calculateNet(); }
 function calculateNet() { let t = parseFloat(document.getElementById('inv_total').value) || 0; let d = parseFloat(document.getElementById('inv_disc').value) || 0; let r = parseFloat(document.getElementById('inv_round').value) || 0; document.getElementById('inv_net').value = (t - d + r).toFixed(2); }
+
 function saveInvoice() { 
     const invId = document.getElementById('inv_id').value; 
     const client = loadedData.clients.find(c => c.Name === document.getElementById('inv_client').value.trim()); 
@@ -372,7 +422,6 @@ function saveInvoice() {
         netAmount: document.getElementById('inv_net').value 
     }; 
     
-    // --- THE FIX: Capture the Initial Payment inputs ---
     const initialPaymentAmt = parseFloat(document.getElementById('inv_rec_amount').value) || 0;
     const initialPaymentMode = document.getElementById('inv_rec_mode').value;
     
@@ -380,26 +429,35 @@ function saveInvoice() {
 
     if(invId) {
         executeSave('updateInvoice', invId, invData, invoiceItems); 
+        if (initialPaymentAmt > 0) {
+            let recNum = generateReceiptNum();
+            executeSave('addReceipt', invId, invData.date, initialPaymentAmt, initialPaymentMode, recNum, client.ID);
+        }
     } else {
-        // Generate Temp ID here so we can attach a receipt to it offline
         targetInvId = 'TMP-' + Date.now().toString().substring(5);
-        invData.tempId = targetInvId; // Passes safely to optimistic offline view
-        executeSave('addInvoice', invData, invoiceItems); 
+        invData.tempId = targetInvId; 
+        
+        let receiptData = null;
+        if (initialPaymentAmt > 0) {
+            receiptData = {
+                date: invData.date,
+                amount: initialPaymentAmt,
+                mode: initialPaymentMode,
+                recNum: generateReceiptNum(),
+                clientId: client.ID
+            };
+        }
+        executeSave('addInvoice', invData, invoiceItems, receiptData); 
     }
     
-    // --- THE FIX: Automatically chain the receipt creation if payment was typed ---
-    if (initialPaymentAmt > 0) {
-        let recNum = generateReceiptNum();
-        executeSave('addReceipt', targetInvId, invData.date, initialPaymentAmt, initialPaymentMode, recNum, client.ID);
-    }
-    
-    document.getElementById('inv_rec_amount').value = ''; // Reset UI payment field
+    document.getElementById('inv_rec_amount').value = ''; 
     showView('dashboardView'); 
 }
+
 function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.length === 0) return "REC-0001"; let max = 0; loadedData.receipts.forEach(r => { let match = String(r['Receipt ID']).match(/(\d+)$/); if(match && parseInt(match[1]) > max) max = parseInt(match[1]); }); return "REC-" + (max + 1).toString().padStart(4, '0'); }
 function filterInvoicesForReceipt() { let clientName = document.getElementById('rec_client_input').value.trim(); let clientObj = loadedData.clients.find(c => c.Name === clientName); let sel = document.getElementById('rec_invoice'); sel.innerHTML = '<option value="">None (Advance Payment)</option>'; document.getElementById('rec_client_id').value = clientObj ? clientObj.ID : ''; if(!clientObj) return; loadedData.invoices.filter(i => i['Client ID'] === clientObj.ID && i.balance > 0).forEach(inv => { sel.innerHTML += `<option value="${inv['Invoice ID']}">${inv['Invoice Number']} (Bal: ${inv.balance.toFixed(2)})</option>`; }); }
 function openAddReceipt(forceInvId = null, forceClientId = null) { document.getElementById('r_id').value = ''; document.getElementById('rec_num').value = generateReceiptNum(); document.getElementById('rec_client_input').value = ''; if(forceInvId) { let inv = loadedData.invoices.find(i => i['Invoice ID'] === forceInvId); document.getElementById('rec_client_input').value = inv['Client Name']; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = forceInvId; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; } else if (forceClientId) { let cl = loadedData.clients.find(c => c.ID === forceClientId); document.getElementById('rec_client_input').value = cl.Name; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = false; } else { document.getElementById('rec_client_input').disabled = false; document.getElementById('rec_client_clear').disabled = false; document.getElementById('rec_invoice').disabled = false; filterInvoicesForReceipt(); } document.getElementById('rec_date').valueAsDate = new Date(); document.getElementById('rec_amount').value = ''; document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; new bootstrap.Modal(document.getElementById('receiptModal')).show(); }
 function openEditReceipt(recId) { const rec = loadedData.receipts.find(r => r['Receipt ID'] === recId); if(!rec) return; document.getElementById('r_id').value = rec['Receipt ID']; document.getElementById('rec_num').value = rec['Receipt ID']; const client = loadedData.clients.find(c => c.ID === rec['Client ID']); document.getElementById('rec_client_input').value = client ? client.Name : ''; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = rec['Invoice ID'] || ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; document.getElementById('rec_date').value = rec.Date; document.getElementById('rec_amount').value = rec.Amount; document.getElementById('rec_mode').value = rec['Payment Mode']; document.getElementById('receiptModalTitle').innerText = 'Edit Receipt'; new bootstrap.Modal(document.getElementById('receiptModal')).show(); }
-function saveReceipt() { const rid = document.getElementById('r_id').value; const rNum = document.getElementById('rec_num').value; const clientId = document.getElementById('rec_client_id').value; const invId = document.getElementById('rec_invoice').value; const amt = document.getElementById('rec_amount').value; if(!clientId || !amt || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); if(rid) executeSave('updateReceipt', rid, invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); else executeSave('addReceipt', invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId);}
+function saveReceipt() { const rid = document.getElementById('r_id').value; const rNum = document.getElementById('rec_num').value; const clientId = document.getElementById('rec_client_id').value; const invId = document.getElementById('rec_invoice').value; const amt = document.getElementById('rec_amount').value; if(!clientId || !amt || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); if(rid) executeSave('updateReceipt', rid, invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); else executeSave('addReceipt', invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); }
 
 window.onload = loadApp;
