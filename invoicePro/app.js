@@ -5,8 +5,11 @@ let invoiceItems = [];
 let currentStmtClient = null;
 let currentPreviewContext = {}; 
 let revenueChartInstance = null; 
+let currentClientDashboardId = null;
 
-// --- UTILITIES ---
+// FEATURE: Remember View State perfectly.
+let lastMainView = localStorage.getItem('InvoiceProLastMainView') || 'dashboardView';
+
 function generateUID(prefix) { return prefix + '-' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
 function customAlert(message) { 
@@ -19,18 +22,28 @@ function confirmDelete(type, id) {
     const confirmModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
     document.getElementById('confirmBtnYes').onclick = () => {
         confirmModal.hide();
-        showView('dashboardView');
         executeSave('deleteRecord', type, id);
+        
+        // Correct dynamic back-tracking after deleting a record
+        if(type === 'client' && String(id) === String(currentClientDashboardId)) {
+            showView('dashboardView');
+        } else {
+            showView(lastMainView);
+        }
     };
     confirmModal.show();
 }
 
-// FEATURE: Remember View State
+// FEATURE: Safe Routing that Remembers where you were
 function showView(viewId) {
+    if(viewId === 'dashboardView' || viewId === 'clientDashboardView') {
+        lastMainView = viewId;
+        localStorage.setItem('InvoiceProLastMainView', viewId);
+    }
+    
     document.querySelectorAll('.app-view').forEach(v => v.classList.add('d-none'));
     document.getElementById(viewId).classList.remove('d-none');
     window.scrollTo(0, 0);
-    // Cache the user's current view
     localStorage.setItem('InvoiceProLastView', viewId);
 }
 
@@ -55,7 +68,6 @@ async function importContact() {
     } catch (ex) { console.log('Contact picker error:', ex); }
 }
 
-// --- INDEXED DB ENGINE ---
 let db;
 function initDB(callback) { 
     let req = window.indexedDB.open('InvoiceProDB', 1); 
@@ -99,10 +111,36 @@ async function apiCall(action, ...params) {
     return result.data; 
 }
 
-// FEATURE: Recall View on Load
+// Memory bindings for Bootstrap Tabs
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', event => {
+            localStorage.setItem('InvoiceProLastTab', event.target.getAttribute('data-bs-target'));
+        });
+    });
+});
+
+// FEATURE: Recall View and Tab exactly where left off
 window.onload = () => {
     let lastView = localStorage.getItem('InvoiceProLastView') || 'dashboardView';
     showView(lastView);
+    
+    if (lastView === 'dashboardView') {
+        let lastTab = localStorage.getItem('InvoiceProLastTab') || '#overviewTab';
+        let tabBtn = document.querySelector(`button[data-bs-target="${lastTab}"]`);
+        if (tabBtn) {
+            let tabInst = new bootstrap.Tab(tabBtn);
+            tabInst.show();
+        }
+    }
+    
+    // Attempt to re-load client dashboard if that was the last screen
+    if(lastView === 'clientDashboardView') {
+        currentClientDashboardId = localStorage.getItem('InvoiceProLastClientId');
+        if(currentClientDashboardId) openClientDashboard(currentClientDashboardId);
+        else showView('dashboardView');
+    }
+    
     loadApp();
 };
 
@@ -121,7 +159,6 @@ function loadApp() {
     });
   });
 
-  // Reveal Contact Picker Button if supported (Android specific integration)
   if ('contacts' in navigator && 'ContactsManager' in window) {
       const importBtn = document.getElementById('btnImportContact');
       if (importBtn) importBtn.classList.remove('d-none');
@@ -135,7 +172,6 @@ function saveToQueue(action, params) { if(!db) return; try { let tx = db.transac
 function processQueue() { if (!navigator.onLine || !db) return; try { let tx = db.transaction('syncQueue', 'readonly'); let req = tx.objectStore('syncQueue').getAll(); req.onsuccess = () => { let queue = req.result; if (queue.length === 0) return; updateSyncStatus('Syncing...'); let item = queue[0]; apiCall(item.action, ...item.params).then(() => { let dTx = db.transaction('syncQueue', 'readwrite'); dTx.objectStore('syncQueue').delete(item.id); dTx.oncomplete = () => processQueue(); }).catch(() => updateSyncStatus('Offline')); }; } catch(e){} }
 function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch(() => { saveToQueue(action, params); }); }
 
-// FIXED: Exact frontend ID mapping for optimistic matching
 function optimisticUpdate(action, params) {
   try {
       let m = document.querySelector('.modal.show'); 
@@ -145,7 +181,7 @@ function optimisticUpdate(action, params) {
           const backdrop = document.querySelector('.modal-backdrop');
           if (backdrop) backdrop.remove();
       }
-  } catch (e) { console.warn("Modal transition suppressed for safety."); }
+  } catch (e) {}
 
   if(action === 'addClient') loadedData.clients.push({ ID: params[0], Name: params[1], 'Contact Name': params[2], Email: params[3], Mobile: params[4] });
   else if(action === 'addService') loadedData.services.push({ ID: params[0], Name: params[1], Description: params[2], Rate: params[3] });
@@ -306,7 +342,6 @@ function printHTML(content) {
     doc.write(`<!DOCTYPE html><html><head><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><style>@media print { @page { size: A4 portrait !important; margin: 10mm !important; } } body { padding: 0; font-family: sans-serif; color: #000; background: #fff; font-size: 12px; } .table-sm th, .table-sm td { padding: 4px 6px !important; } .sign-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; font-weight: 600; margin-top: 40px; }</style></head><body>${content}<script>window.onload = function() { setTimeout(function() { window.print(); }, 300); };<\/script></body></html>`); doc.close();
 }
 
-// FORMAT SAFETY: Uses substring(0,10) to sanitize Google's date outputs strictly to YYYY-MM-DD
 function openInvoicePreview(invId) {
   const inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(invId)); const client = loadedData.clients.find(c => String(c.ID) === String(inv['Client ID'])); if(!inv) return;
   let net = parseFloat(inv['Net Amount']) || 0; let paid = inv.paidAmount || 0; let bal = inv.balance || 0;
@@ -327,13 +362,92 @@ function openReceiptPreview(recId) {
     setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: rec['Receipt ID'], clientName: clientName }, () => openEditReceipt(recId), () => confirmDelete('receipt', recId));
 }
 
+// ================= NEW FEATURE: CLIENT DASHBOARD VIEWER =================
+function openClientDashboard(clientId) {
+    currentClientDashboardId = clientId;
+    localStorage.setItem('InvoiceProLastClientId', clientId);
+    const c = loadedData.clients.find(x => String(x.ID) === String(clientId));
+    if(!c) return showView('dashboardView');
+    
+    document.getElementById('cd_clientName').innerText = c.Name;
+    document.getElementById('cd_editBtn').onclick = () => openEditClient(clientId);
+    document.getElementById('cd_recordReceiptBtn').onclick = () => openAddReceipt(null, clientId);
+    document.getElementById('cd_statementBtn').onclick = () => openStatement(clientId);
+    
+    document.getElementById('cd_filter').value = '3m';
+    document.getElementById('cd_customDates').classList.add('d-none');
+    document.getElementById('cd_customDates').classList.remove('d-flex');
+    
+    renderClientDashboard();
+    showView('clientDashboardView');
+}
+
+function handleCdFilterChange() {
+    const val = document.getElementById('cd_filter').value;
+    const customDiv = document.getElementById('cd_customDates');
+    if (val === 'custom') {
+        customDiv.classList.remove('d-none');
+        customDiv.classList.add('d-flex');
+    } else {
+        customDiv.classList.add('d-none');
+        customDiv.classList.remove('d-flex');
+        renderClientDashboard();
+    }
+}
+
+function renderClientDashboard() {
+    if(!currentClientDashboardId) return;
+    const filter = document.getElementById('cd_filter').value;
+    const now = new Date(); 
+    let startDate = new Date(0); 
+    let endDate = new Date('2099-01-01');
+    
+    if(filter === '3m') startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); 
+    else if(filter === '6m') startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()); 
+    else if(filter === 'ty') startDate = new Date(now.getFullYear(), 0, 1); 
+    else if(filter === 'ly') { startDate = new Date(now.getFullYear() - 1, 0, 1); endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59); } 
+    else if(filter === 'custom') { 
+        if(document.getElementById('cd_startDate').value) startDate = new Date(document.getElementById('cd_startDate').value); 
+        if(document.getElementById('cd_endDate').value) { endDate = new Date(document.getElementById('cd_endDate').value); endDate.setHours(23, 59, 59); } 
+    }
+    
+    const cInvs = loadedData.invoices.filter(i => {
+        let d = new Date(i.Date);
+        return String(i['Client ID']) === String(currentClientDashboardId) && d >= startDate && d <= endDate;
+    });
+    
+    document.getElementById('cd_invoiceList').innerHTML = cInvs.map(i => {
+        let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
+        if(!dueDateStr) { let d = new Date(i.Date); d.setDate(d.getDate() + 15); dueDateStr = d; }
+        if(i.balance > 0 && new Date(dueDateStr) < new Date(now.setHours(0,0,0,0))) isOverdue = true;
+
+        let status = i.balance <= 0 ? '<span class="badge-paid">Paid</span>' : (isOverdue ? '<span class="badge-due text-white bg-danger">Overdue</span>' : '<span class="badge-due">Due</span>');
+        let netAmt = (parseFloat(i['Net Amount']) || 0).toFixed(2); 
+        let balText = i.balance > 0 ? `<div class="small fw-bold text-danger">Bal: ${i.balance.toFixed(2)}</div>` : '';
+        
+        return `<tr onclick="openInvoicePreview('${i['Invoice ID']}')"><td class="d-none d-md-table-cell fw-bold text-primary">${i['Invoice Number']}</td><td class="d-none d-md-table-cell text-muted">${i.Date.substring(0, 10)}</td><td class="d-none d-md-table-cell text-muted">${netAmt}</td><td class="d-none d-md-table-cell fw-bold">${i.balance > 0 ? i.balance.toFixed(2) : '0.00'}</td><td class="d-none d-md-table-cell">${status}</td><td class="d-none d-md-table-cell text-end text-nowrap">${i.balance > 0 ? `<button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')" title="Send WhatsApp Reminder"><i class="bi bi-whatsapp"></i></button>` : ''}<button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-0"><div class="p-3 pb-2"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-primary">${i['Invoice Number']}</span><span class="text-muted small">${i.Date.substring(0, 10)}</span></div><div class="d-flex justify-content-between align-items-end"><div><div class="small fw-bold">Amt: ${netAmt}</div>${balText}</div><div>${status}</div></div></div>${i.balance > 0 ? `<div class="d-flex border-top"><button class="btn btn-light w-50 rounded-0 py-2 border-end text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); openAddReceipt('${i['Invoice ID']}')"><i class="bi bi-cash-stack"></i> Receipt</button><button class="btn btn-light w-50 rounded-0 py-2 text-success fw-bold" style="font-size:0.8rem;" onclick="event.stopPropagation(); sendWhatsAppReminder('${i['Invoice ID']}')"><i class="bi bi-whatsapp"></i> Remind</button></div>` : ''}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">No invoices found for this period.</td></tr>';
+
+    const cRecs = loadedData.receipts.filter(r => {
+        let d = new Date(r.Date);
+        let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(r['Invoice ID'])); 
+        let isForClient = (inv && String(inv['Client ID']) === String(currentClientDashboardId)) || (String(r['Client ID']) === String(currentClientDashboardId));
+        return isForClient && d >= startDate && d <= endDate;
+    });
+
+    document.getElementById('cd_receiptList').innerHTML = cRecs.map(r => {
+        let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(r['Invoice ID']));
+        let invNum = inv ? inv['Invoice Number'] : 'Advance / Unlinked';
+        return `<tr onclick="openReceiptPreview('${r['Receipt ID']}')"><td class="d-none d-md-table-cell fw-bold text-secondary">${r['Receipt ID'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${r.Date.substring(0, 10)}</td><td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></td><td class="d-none d-md-table-cell fw-bold text-success text-end">+${(parseFloat(r.Amount)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-3"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-secondary">${r['Receipt ID'] || '-'}</span><span class="text-muted small">${r.Date.substring(0, 10)}</span></div><div class="text-wrap fw-medium small mb-2">${invNum}</div><div class="d-flex justify-content-between align-items-end"><div class="fw-bold text-success">+${(parseFloat(r.Amount)||0).toFixed(2)}</div><div><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></div></div></td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No receipts found for this period.</td></tr>';
+}
+
 function openStatement(clientId) { currentStmtClient = loadedData.clients.find(c => String(c.ID) === String(clientId)); if(!currentStmtClient) return; document.getElementById('previewStmtFilter').value = '3m'; document.getElementById('previewCustomDates').classList.add('d-none'); generateStatementPreview(); }
 function handlePreviewFilterChange() { const val = document.getElementById('previewStmtFilter').value; if(val === 'custom') { document.getElementById('previewCustomDates').classList.remove('d-none'); } else { document.getElementById('previewCustomDates').classList.add('d-none'); } }
 function applyStatementFilter() { const modal = bootstrap.Modal.getInstance(document.getElementById('filterModal')); if (modal) modal.hide(); generateStatementPreview(); }
 
 function generateStatementPreview() {
   if(!currentStmtClient) return; const filter = document.getElementById('previewStmtFilter').value; const now = new Date(); let startDate = new Date(0); let endDate = new Date('2099-01-01');
-  
   if(filter === '3m') startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); 
   else if(filter === '6m') startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()); 
   else if(filter === 'ty') startDate = new Date(now.getFullYear(), 0, 1); 
@@ -347,7 +461,6 @@ function generateStatementPreview() {
   
   let tbody = ''; let runTotal = openingBalance; 
   if (filter !== 'all') { tbody += `<tr class="table-light"><td class="text-muted fst-italic">Prior</td><td colspan="2" class="fw-bold text-muted">OPENING BALANCE</td><td class="text-end"></td><td class="text-end fw-bold ${openingBalance <= 0 ? 'text-success' : 'text-danger'}">${openingBalance.toFixed(2)}</td></tr>`; }
-  
   stmtData.forEach(row => { runTotal += row.amount; tbody += `<tr><td>${row.date.toLocaleDateString()}</td><td><span class="badge ${row.type==='Invoice'?'bg-primary':'bg-success'}">${row.type}</span></td><td>${row.ref}</td><td class="text-end ${row.amount < 0 ? 'text-success' : 'text-danger'}">${Math.abs(row.amount).toFixed(2)}</td><td class="text-end fw-bold">${runTotal.toFixed(2)}</td></tr>`; }); 
   if(stmtData.length === 0 && openingBalance === 0) tbody = '<tr><td colspan="5" class="text-center text-muted py-4">No records found for this period.</td></tr>';
   
@@ -358,11 +471,7 @@ function generateStatementPreview() {
 
 function showActionModal(type, id) {
   const body = document.getElementById('actionModalBody'); let html = '';
-  if (type === 'client') {
-    html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openAddReceipt(null, '${id}')"><i class="bi bi-cash-stack me-3 text-success"></i> Record Receipt</button>`;
-    html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openStatement('${id}')"><i class="bi bi-journal-text me-3 text-info"></i> View Statement</button>`;
-    html += `<button class="btn btn-light border w-100 text-start py-2" onclick="closeActionModal(); openEditClient('${id}')"><i class="bi bi-pencil me-3 text-secondary"></i> Edit Client</button>`;
-  } else if (type === 'service') {
+  if (type === 'service') {
     html += `<button class="btn btn-light border w-100 text-start py-2 mb-2" onclick="closeActionModal(); openEditService('${id}')"><i class="bi bi-pencil me-3 text-secondary"></i> Edit Service</button>`;
     html += `<button class="btn btn-light border w-100 text-start py-2 text-danger" onclick="closeActionModal(); confirmDelete('service', '${id}')"><i class="bi bi-trash me-3"></i> Delete Service</button>`;
   }
@@ -392,7 +501,8 @@ function renderTables() {
   document.getElementById('clientTableBody').innerHTML = filteredClients.map(c => {
     let balText = c.balanceDue > 0 ? `<span class="text-danger fw-bold">${c.balanceDue.toFixed(2)}</span>` : `<span class="text-success fw-bold">0.00</span>`;
     let contactHTML = ''; if(c['Contact Name'] || c.Mobile) { let n = c['Contact Name'] ? `<i class="bi bi-person"></i> ${c['Contact Name']}` : ''; let m = c.Mobile ? `<i class="bi bi-telephone"></i> ${c.Mobile}` : ''; let sep = (c['Contact Name'] && c.Mobile) ? ' | ' : ''; contactHTML = `<div class="text-muted small mb-1">${n}${sep}${m}</div>`; }
-    return `<tr onclick="if(window.innerWidth < 768) showActionModal('client', '${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${c.Mobile || '-'}</td><td class="d-none d-md-table-cell fw-bold ${c.balanceDue > 0 ? 'text-danger' : 'text-success'}">${(c.balanceDue||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balText}</div></td></tr>`;
+    // FIXED: Clicking a client row now correctly opens the full separate Client Dashboard
+    return `<tr onclick="openClientDashboard('${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${c.Mobile || '-'}</td><td class="d-none d-md-table-cell fw-bold ${c.balanceDue > 0 ? 'text-danger' : 'text-success'}">${(c.balanceDue||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balText}</div></td></tr>`;
   }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No clients found.</td></tr>';
 
   const searchSr = document.getElementById('searchServices')?.value.toLowerCase() || '';
@@ -408,16 +518,18 @@ function renderTables() {
     let clientName = inv ? inv['Client Name'] : (cl ? cl.Name : '-'); let invNum = inv ? inv['Invoice Number'] : 'Advance / Unlinked';
     return `<tr onclick="openReceiptPreview('${r['Receipt ID']}')"><td class="d-none d-md-table-cell fw-bold text-secondary">${r['Receipt ID'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${r.Date.substring(0, 10)}</td><td class="d-none d-md-table-cell fw-medium">${clientName} <br><small class="text-muted">${invNum}</small></td><td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></td><td class="d-none d-md-table-cell fw-bold text-success text-end">+${(parseFloat(r.Amount)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-3"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-secondary">${r['Receipt ID'] || '-'}</span><span class="text-muted small">${r.Date.substring(0, 10)}</span></div><div class="text-wrap fw-medium small mb-2">${clientName}</div><div class="d-flex justify-content-between align-items-end"><div class="fw-bold text-success">+${(parseFloat(r.Amount)||0).toFixed(2)}</div><div><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></div></div></td></tr>`;
   }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">No receipts found.</td></tr>';
+
+  // Ensure client dashboard data stays actively synchronized when background offline updates complete
+  renderClientDashboard();
 }
 
 function openAddClient() { ['c_id','c_name','c_contact','c_email','c_mobile'].forEach(id => document.getElementById(id).value = ''); document.getElementById('clientModalTitle').innerText = 'Add Client'; showView('clientFormView'); }
-// FORMAT FIX: Handled date string cleanup natively for date inputs
 function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID) === String(id)); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile; document.getElementById('clientModalTitle').innerText = 'Edit Client'; showView('clientFormView'); }
-function saveClient() { const id = document.getElementById('c_id').value || generateUID('CLI'); const data = [id, document.getElementById('c_name').value, document.getElementById('c_contact').value, document.getElementById('c_email').value, document.getElementById('c_mobile').value]; if(!data[1]) return customAlert("Client name required!"); document.getElementById('c_id').value ? executeSave('updateClient', ...data) : executeSave('addClient', ...data); showView('dashboardView'); }
+function saveClient() { const id = document.getElementById('c_id').value || generateUID('CLI'); const data = [id, document.getElementById('c_name').value, document.getElementById('c_contact').value, document.getElementById('c_email').value, document.getElementById('c_mobile').value]; if(!data[1]) return customAlert("Client name required!"); document.getElementById('c_id').value ? executeSave('updateClient', ...data) : executeSave('addClient', ...data); showView(lastMainView); }
 
 function openAddService() { ['s_id','s_name','s_desc','s_rate'].forEach(id => document.getElementById(id).value = ''); document.getElementById('serviceModalTitle').innerText = 'Add Service'; showView('serviceFormView'); }
 function openEditService(id) { const s = loadedData.services.find(x => String(x.ID) === String(id)); document.getElementById('s_id').value = s.ID; document.getElementById('s_name').value = s.Name; document.getElementById('s_desc').value = s.Description; document.getElementById('s_rate').value = s.Rate; document.getElementById('serviceModalTitle').innerText = 'Edit Service'; showView('serviceFormView'); }
-function saveService() { const id = document.getElementById('s_id').value || generateUID('SRV'); const data = [id, document.getElementById('s_name').value, document.getElementById('s_desc').value, document.getElementById('s_rate').value]; if(!data[1] || !data[3]) return customAlert("Name and Rate required!"); document.getElementById('s_id').value ? executeSave('updateService', ...data) : executeSave('addService', ...data); showView('dashboardView'); }
+function saveService() { const id = document.getElementById('s_id').value || generateUID('SRV'); const data = [id, document.getElementById('s_name').value, document.getElementById('s_desc').value, document.getElementById('s_rate').value]; if(!data[1] || !data[3]) return customAlert("Name and Rate required!"); document.getElementById('s_id').value ? executeSave('updateService', ...data) : executeSave('addService', ...data); showView(lastMainView); }
 
 function openAddInvoice() { invoiceItems = []; renderItems(); document.getElementById('inv_id').value = ''; document.getElementById('inv_client').value = ''; document.getElementById('inv_disc').value = '0'; document.getElementById('inv_round').value = '0'; document.getElementById('inv_num').value = loadedData.nextInvoiceNumber || 'INV-TEMP'; document.getElementById('inv_date').valueAsDate = new Date(); autoSetDueDate(); showView('invoiceFormView'); }
 function openEditInvoice(invId) { const inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(invId)); if(!inv) return; document.getElementById('inv_id').value = invId; document.getElementById('inv_client').value = inv['Client Name']; document.getElementById('inv_date').value = inv.Date.substring(0, 10); document.getElementById('inv_due_date').value = inv['Due Date'] ? inv['Due Date'].substring(0, 10) : ''; document.getElementById('inv_num').value = inv['Invoice Number']; document.getElementById('inv_disc').value = inv['Discount']; document.getElementById('inv_round').value = inv['Round Off']; invoiceItems = (loadedData.invoiceItems || []).filter(i => String(i['Invoice ID']) === String(invId)).map(i => ({ serviceId: i['Service ID'], name: i.Name, description: i.Description, rate: parseFloat(i.Rate)||0, quantity: parseFloat(i.Quantity)||0, amount: parseFloat(i.Amount)||0 })); renderItems(); showView('invoiceFormView'); }
@@ -450,11 +562,11 @@ function saveInvoice() {
         executeSave('addInvoice', invData, invoiceItems, receiptData); 
     }
     
-    document.getElementById('inv_rec_amount').value = ''; showView('dashboardView'); 
+    document.getElementById('inv_rec_amount').value = ''; showView(lastMainView); 
 }
 
 function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.length === 0) return "REC-0001"; let max = 0; loadedData.receipts.forEach(r => { let match = String(r['Receipt ID']).match(/(\d+)$/); if(match && parseInt(match[1]) > max) max = parseInt(match[1]); }); return "REC-" + (max + 1).toString().padStart(4, '0'); }
 function filterInvoicesForReceipt() { let clientName = document.getElementById('rec_client_input').value.trim(); let clientObj = loadedData.clients.find(c => c.Name === clientName); let sel = document.getElementById('rec_invoice'); sel.innerHTML = '<option value="">None (Advance Payment)</option>'; document.getElementById('rec_client_id').value = clientObj ? clientObj.ID : ''; if(!clientObj) return; loadedData.invoices.filter(i => String(i['Client ID']) === String(clientObj.ID) && i.balance > 0).forEach(inv => { sel.innerHTML += `<option value="${inv['Invoice ID']}">${inv['Invoice Number']} (Bal: ${inv.balance.toFixed(2)})</option>`; }); }
 function openAddReceipt(forceInvId = null, forceClientId = null) { document.getElementById('r_id').value = ''; document.getElementById('rec_num').value = generateReceiptNum(); document.getElementById('rec_client_input').value = ''; if(forceInvId) { let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(forceInvId)); document.getElementById('rec_client_input').value = inv['Client Name']; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = forceInvId; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; } else if (forceClientId) { let cl = loadedData.clients.find(c => String(c.ID) === String(forceClientId)); document.getElementById('rec_client_input').value = cl.Name; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = false; } else { document.getElementById('rec_client_input').disabled = false; document.getElementById('rec_client_clear').disabled = false; document.getElementById('rec_invoice').disabled = false; filterInvoicesForReceipt(); } document.getElementById('rec_date').valueAsDate = new Date(); document.getElementById('rec_amount').value = ''; document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; showView('receiptFormView'); }
 function openEditReceipt(recId) { const rec = loadedData.receipts.find(r => String(r['Receipt ID']) === String(recId)); if(!rec) return; document.getElementById('r_id').value = rec['Receipt ID']; document.getElementById('rec_num').value = rec['Receipt ID']; const client = loadedData.clients.find(c => String(c.ID) === String(rec['Client ID'])); document.getElementById('rec_client_input').value = client ? client.Name : ''; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = rec['Invoice ID'] || ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; document.getElementById('rec_date').value = rec.Date.substring(0, 10); document.getElementById('rec_amount').value = rec.Amount; document.getElementById('rec_mode').value = rec['Payment Mode']; document.getElementById('receiptModalTitle').innerText = 'Edit Receipt'; showView('receiptFormView'); }
-function saveReceipt() { const rid = document.getElementById('r_id').value; const rNum = document.getElementById('rec_num').value; const clientId = document.getElementById('rec_client_id').value; const invId = document.getElementById('rec_invoice').value; const amt = document.getElementById('rec_amount').value; if(!clientId || !amt || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); if(rid) executeSave('updateReceipt', rid, invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); else executeSave('addReceipt', invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); showView('dashboardView'); }
+function saveReceipt() { const rid = document.getElementById('r_id').value; const rNum = document.getElementById('rec_num').value; const clientId = document.getElementById('rec_client_id').value; const invId = document.getElementById('rec_invoice').value; const amt = document.getElementById('rec_amount').value; if(!clientId || !amt || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); if(rid) executeSave('updateReceipt', rid, invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); else executeSave('addReceipt', invId, document.getElementById('rec_date').value, amt, document.getElementById('rec_mode').value, rNum, clientId); showView(lastMainView); }
