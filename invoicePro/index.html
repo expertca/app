@@ -15,18 +15,9 @@
   
   <link rel="stylesheet" href="style.css">
   <style>
-    /* FEATURE: Fixed save button on mobile devices */
     @media (max-width: 767.98px) {
-      .fixed-bottom-mobile {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 1040;
-      }
-      .form-view-container {
-        padding-bottom: 90px !important;
-      }
+      .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
+      .form-view-container { padding-bottom: 90px !important; }
     }
   </style>
 </head>
@@ -39,7 +30,6 @@
 
 <!-- ================= 1. DASHBOARD VIEW ================= -->
 <div id="dashboardView" class="app-view d-print-none">
-  <!-- FIXED: Added sticky-top, bg-white, and z-3 to strictly pin the header -->
   <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
     <div class="container-xl header-container">
       <div class="header-top-row d-md-none">
@@ -186,59 +176,61 @@
   </div>
 </div>
 
-<!-- ================= NEW: CLIENT DASHBOARD VIEW ================= -->
+<!-- ================= NEW: UNIFIED CLIENT DASHBOARD VIEW ================= -->
 <div id="clientDashboardView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
-      <h5 class="fw-bold mb-0 text-primary text-truncate" id="cd_clientName" style="max-width: 220px;">Client</h5>
+      <h5 class="fw-bold mb-0 text-primary">Client Dashboard</h5>
     </div>
-    <button class="btn btn-outline-secondary btn-sm px-3 fw-bold" id="cd_editBtn"><i class="bi bi-pencil"></i> Edit Client</button>
+    <button class="btn btn-outline-secondary btn-sm px-3 shadow-sm border" id="cd_editBtn" title="Edit Client"><i class="bi bi-pencil"></i></button>
   </div>
   
   <div class="container-xl form-view-container max-w-3xl mx-auto">
     
-    <!-- FILTER ROW -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2 border-bottom pb-3">
+    <!-- DIV 1: CLIENT DETAILS -->
+    <div class="card border-0 shadow-sm p-4 mb-4 bg-white" id="cd_clientDetails">
+      <!-- Populated dynamically by app.js -->
+    </div>
+
+    <!-- DIV 2: MAIN AREA (UNIFIED LEDGER) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
       <h5 class="fw-bold mb-0">Client Ledger</h5>
-      <div class="d-flex gap-2 align-items-center flex-wrap">
-        <select class="form-select form-select-sm w-auto" id="cd_filter" onchange="handleCdFilterChange()">
-          <option value="all">All Time</option>
-          <option value="3m" selected>Last 3 Months</option>
-          <option value="6m">Last 6 Months</option>
-          <option value="ty">This Year</option>
-          <option value="ly">Last Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
-        <div id="cd_customDates" class="d-none gap-2 align-items-center">
-          <input type="date" id="cd_startDate" class="form-control form-control-sm" onchange="renderClientDashboard()">
-          <span class="text-muted small">to</span>
-          <input type="date" id="cd_endDate" class="form-control form-control-sm" onchange="renderClientDashboard()">
-        </div>
+      <div class="dropdown">
+        <button class="btn btn-outline-primary btn-sm dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown"><i class="bi bi-funnel"></i> Filter</button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><a class="dropdown-item" href="#" onclick="setCdFilter('all')">All Time</a></li>
+          <li><a class="dropdown-item" href="#" onclick="setCdFilter('3m')">Last 3 Months</a></li>
+          <li><a class="dropdown-item" href="#" onclick="setCdFilter('6m')">Last 6 Months</a></li>
+          <li><a class="dropdown-item" href="#" onclick="setCdFilter('ty')">This Year</a></li>
+          <li><a class="dropdown-item" href="#" onclick="setCdFilter('ly')">Last Year</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" onclick="document.getElementById('cd_customDates').classList.toggle('d-none')">Custom Range</a></li>
+        </ul>
       </div>
     </div>
     
-    <!-- INVOICES LIST -->
-    <h6 class="fw-bold text-muted mb-2 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.8rem;">Invoices</h6>
-    <div class="table-scroll mb-4 bg-white border rounded shadow-sm">
-      <table class="table main-list-table table-hover mb-0">
-        <thead class="d-none d-md-table-header-group table-light"><tr><th>Inv #</th><th>Date</th><th>Net Amt</th><th>Balance</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
-        <tbody id="cd_invoiceList"></tbody>
-      </table>
+    <div id="cd_customDates" class="d-none flex-wrap gap-2 mb-3 w-100 p-3 bg-light border rounded shadow-sm">
+      <div class="d-flex align-items-center gap-2 w-100">
+         <label class="small fw-bold text-muted mb-0" style="width: 40px;">From:</label>
+         <input type="date" id="cd_startDate" class="form-control form-control-sm flex-grow-1" onchange="renderClientDashboard()">
+      </div>
+      <div class="d-flex align-items-center gap-2 w-100 mt-2 mt-md-0">
+         <label class="small fw-bold text-muted mb-0" style="width: 40px;">To:</label>
+         <input type="date" id="cd_endDate" class="form-control form-control-sm flex-grow-1" onchange="renderClientDashboard()">
+      </div>
     </div>
-
-    <!-- RECEIPTS LIST -->
-    <h6 class="fw-bold text-muted mb-2 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.8rem;">Receipts</h6>
+    
     <div class="table-scroll mb-4 bg-white border rounded shadow-sm">
       <table class="table main-list-table table-hover mb-0">
-        <thead class="d-none d-md-table-header-group table-light"><tr><th>Rec #</th><th>Date</th><th>Mode</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
-        <tbody id="cd_receiptList"></tbody>
+        <thead class="d-none d-md-table-header-group table-light"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+        <tbody id="cd_ledgerList"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- FIXED BOTTOM FOOTER -->
-  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-flex gap-2 z-3">
+  <!-- DIV 3: FOOTER -->
+  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-flex gap-2 z-3" style="max-width: 800px; margin: 0 auto;">
     <button class="btn btn-success w-50 py-2 fw-bold" id="cd_recordReceiptBtn"><i class="bi bi-cash-stack"></i> Record Receipt</button>
     <button class="btn btn-info text-white w-50 py-2 fw-bold" id="cd_statementBtn"><i class="bi bi-journal-text"></i> Statement</button>
   </div>
@@ -374,7 +366,6 @@
       <div class="mb-3">
           <div class="d-flex justify-content-between align-items-end mb-1">
               <label class="form-label text-muted small fw-bold mb-0">Client Name *</label>
-              <!-- FEATURE: Native Android Contact Picker Button -->
               <button type="button" class="btn btn-outline-primary btn-sm d-none py-0 px-2" id="btnImportContact" onclick="importContact()" style="font-size:0.75rem;"><i class="bi bi-person-lines-fill"></i> Import</button>
           </div>
           <input type="text" id="c_name" class="form-control">
