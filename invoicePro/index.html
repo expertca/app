@@ -14,6 +14,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* FEATURE: Fixed save button on mobile devices */
+    @media (max-width: 767.98px) {
+      .fixed-bottom-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1040;
+      }
+      .form-view-container {
+        padding-bottom: 90px !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -177,10 +192,10 @@
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary" id="invoicePageTitle">Create Invoice</h5>
     </div>
-    <button class="btn btn-primary btn-sm px-4" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save</button>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
   
-  <div class="container-xl max-w-3xl mx-auto">
+  <div class="container-xl form-view-container max-w-3xl mx-auto">
     <input type="hidden" id="inv_id"> 
     
     <div class="input-group input-group-sm mb-2">
@@ -279,6 +294,10 @@
       </div>
     </div>
   </div>
+  
+  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-md-none">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save Invoice</button>
+  </div>
 </div>
 
 <!-- ================= 3. CLIENT FORM VIEW ================= -->
@@ -288,18 +307,29 @@
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary" id="clientModalTitle">Add Client</h5>
     </div>
-    <button class="btn btn-primary btn-sm px-4" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save</button>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="c_id">
-      <div class="mb-3"><label class="form-label text-muted small fw-bold">Client Name *</label><input type="text" id="c_name" class="form-control"></div>
+      <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+              <label class="form-label text-muted small fw-bold mb-0">Client Name *</label>
+              <!-- FEATURE: Native Android Contact Picker Button -->
+              <button type="button" class="btn btn-outline-primary btn-sm d-none py-0 px-2" id="btnImportContact" onclick="importContact()" style="font-size:0.75rem;"><i class="bi bi-person-lines-fill"></i> Import</button>
+          </div>
+          <input type="text" id="c_name" class="form-control">
+      </div>
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div>
       <div class="row">
          <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div>
          <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control"></div>
       </div>
     </div>
+  </div>
+  
+  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-md-none">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save Client</button>
   </div>
 </div>
 
@@ -310,15 +340,19 @@
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary" id="serviceModalTitle">Add Service</h5>
     </div>
-    <button class="btn btn-primary btn-sm px-4" onclick="saveService()"><i class="bi bi-check-lg"></i> Save</button>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveService()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="s_id">
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div>
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div>
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div>
     </div>
+  </div>
+  
+  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-md-none">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveService()"><i class="bi bi-check-lg"></i> Save Service</button>
   </div>
 </div>
 
@@ -329,9 +363,9 @@
       <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary" id="receiptModalTitle">Record Receipt</h5>
     </div>
-    <button class="btn btn-primary btn-sm px-4" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save</button>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="r_id">
       <input type="hidden" id="rec_client_id">
@@ -351,6 +385,10 @@
       </div>
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div>
     </div>
+  </div>
+  
+  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-md-none">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save Receipt</button>
   </div>
 </div>
 
