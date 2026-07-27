@@ -40,15 +40,6 @@ function showView(viewId) {
     window.scrollTo(0, 0);
 }
 
-window.addEventListener('scroll', () => {
-    const view = document.getElementById('clientDashboardView');
-    if (!view.classList.contains('d-none')) {
-        const details = document.getElementById('cd_clientDetails');
-        if (window.scrollY > 40) { details.classList.add('hide-on-scroll'); } 
-        else if (window.scrollY <= 10) { details.classList.remove('hide-on-scroll'); }
-    }
-});
-
 async function importContact() {
     const props = ['name', 'email', 'tel'];
     try {
@@ -186,7 +177,6 @@ function optimisticUpdate(action, params) {
   saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns();
 }
 
-// UI HELPER: Visually merges split rows sharing the same Receipt ID back into one object
 function getMergedReceiptsList(receiptsArray) {
     let merged = {};
     receiptsArray.forEach(r => {
@@ -268,7 +258,6 @@ function renderDashboard() {
     let activity = [];
     loadedData.invoices.forEach(i => activity.push({ date: new Date(i.Date), text: `Created Invoice <b>${i['Invoice Number']}</b> for ${i['Client Name']} (₹${i['Net Amount']})`, icon: 'bi-file-earmark-text', color: 'text-primary' }));
     
-    // Merge activities to prevent UI spam from splits
     let mergedAll = getMergedReceiptsList(loadedData.receipts);
     mergedAll.forEach(r => { let cl = loadedData.clients.find(c => String(c.ID) === String(r['Client ID'])); let cName = cl ? cl.Name : 'Unknown'; activity.push({ date: new Date(r.Date), text: `Received <b>₹${r.Amount}</b> from ${cName}`, icon: 'bi-cash-stack', color: 'text-success' }); });
     
@@ -340,7 +329,6 @@ function openInvoicePreview(invId) {
   setupPreviewPage('Invoice Preview', html, { type: 'Invoice', id: inv['Invoice Number'], clientName: inv['Client Name'] }, () => openEditInvoice(invId), () => confirmDelete('invoice', invId));
 }
 
-// FIXED: UI PDF Template now handles visually grouped split receipts perfectly
 function openReceiptPreview(recId) {
     let matchingRecs = loadedData.receipts.filter(r => String(r['Receipt ID']) === String(recId));
     if (matchingRecs.length === 0) return;
@@ -365,27 +353,28 @@ function openReceiptPreview(recId) {
 
 let cdCurrentFilter = '3m';
 
+// FEATURE: Condensed Client Dashboard Header Details
 function openClientDashboard(clientId) {
     currentClientDashboardId = clientId;
     const c = loadedData.clients.find(x => String(x.ID) === String(clientId));
     if(!c) return showView('dashboardView');
     
     let contactHTML = ''; 
-    if(c['Contact Name']) contactHTML += `<div><i class="bi bi-person text-muted me-2"></i> ${c['Contact Name']}</div>`;
-    if(c.Mobile) contactHTML += `<div><i class="bi bi-telephone text-muted me-2"></i> ${String(c.Mobile).replace(/^'/, '')}</div>`;
-    if(c.Email) contactHTML += `<div><i class="bi bi-envelope text-muted me-2"></i> ${c.Email}</div>`;
+    if(c['Contact Name']) contactHTML += `<div class="text-nowrap"><i class="bi bi-person text-muted me-1"></i> ${c['Contact Name']}</div>`;
+    if(c.Mobile) contactHTML += `<div class="text-nowrap"><i class="bi bi-telephone text-muted me-1"></i> ${String(c.Mobile).replace(/^'/, '')}</div>`;
+    if(c.Email) contactHTML += `<div class="text-nowrap"><i class="bi bi-envelope text-muted me-1"></i> ${c.Email}</div>`;
     
     let balClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
     
     document.getElementById('cd_clientDetails').innerHTML = `
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h3 class="fw-bold mb-2 text-dark">${c.Name}</h3>
-                <div class="text-muted small d-flex flex-column gap-1">${contactHTML || 'No contact details provided.'}</div>
+                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1rem;">${c.Name}</h6>
+                <div class="text-muted d-flex flex-wrap gap-3" style="font-size:0.75rem;">${contactHTML || 'No contact details provided.'}</div>
             </div>
-            <div class="text-end text-md-start bg-light p-3 rounded border">
-                <div class="text-muted small fw-bold text-uppercase mb-1">Total Balance Due</div>
-                <h4 class="fw-bold mb-0 ${balClass}">₹${(c.balanceDue||0).toFixed(2)}</h4>
+            <div class="text-end bg-light px-3 py-2 rounded border">
+                <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Balance Due</div>
+                <h6 class="fw-bold mb-0 ${balClass}">₹${(c.balanceDue||0).toFixed(2)}</h6>
             </div>
         </div>
     `;
@@ -483,7 +472,6 @@ function generateStatementPreview() {
   let stmtData = []; let openingBalance = 0;
   loadedData.invoices.forEach(i => { if(String(i['Client ID']) === String(currentStmtClient.ID)) { let d = new Date(i.Date); let amt = parseFloat(i['Net Amount']) || 0; if (d < startDate) { openingBalance += amt; } else if (d <= endDate) { stmtData.push({ date: d, type: 'Invoice', ref: i['Invoice Number'], amount: amt }); } } }); 
   
-  // Use merged receipts for cleaner statements!
   let mergedClientRecs = getMergedReceiptsList(loadedData.receipts.filter(r => String(r['Client ID']) === String(currentStmtClient.ID)));
   mergedClientRecs.forEach(r => { let d = new Date(r.Date); let amt = -(parseFloat(r.Amount) || 0); if (d < startDate) { openingBalance += amt; } else if (d <= endDate) { stmtData.push({ date: d, type: 'Receipt', ref: r['Receipt ID'], amount: amt }); } }); 
   
@@ -540,7 +528,6 @@ function renderTables() {
     `<tr onclick="if(window.innerWidth < 768) showActionModal('service', '${s.ID}')"><td class="d-none d-md-table-cell fw-medium">${s.Name}</td><td class="d-none d-md-table-cell text-muted">${s.Description || '-'}</td><td class="d-none d-md-table-cell fw-medium">${(parseFloat(s.Rate)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1" onclick="event.stopPropagation(); openEditService('${s.ID}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-light text-danger" onclick="event.stopPropagation(); confirmDelete('service', '${s.ID}')"><i class="bi bi-trash"></i></button></td><td class="d-md-none p-3 d-flex justify-content-between align-items-center"><div><div class="fw-bold mb-1">${s.Name}</div><div class="small text-muted">Rate: ${parseFloat(s.Rate).toFixed(2)}</div></div></td></tr>`
   ).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No services found.</td></tr>';
 
-  // Render unified receipts
   const searchRc = document.getElementById('searchReceipts')?.value.toLowerCase() || '';
   let mergedAll = getMergedReceiptsList(loadedData.receipts);
   const filteredReceipts = mergedAll.filter(r => String(r['Receipt ID']).toLowerCase().includes(searchRc));
@@ -567,8 +554,64 @@ function openEditInvoice(invId) { const inv = loadedData.invoices.find(i => Stri
 function autoSetDueDate() { let d = document.getElementById('inv_date').valueAsDate; if(d) { d.setDate(d.getDate() + 15); document.getElementById('inv_due_date').valueAsDate = d; } }
 function autoFillServiceDetails() { const s = loadedData.services.find(x => x.Name === document.getElementById('item_service').value.trim()); if(s) { document.getElementById('item_rate').value = s.Rate; document.getElementById('item_desc').value = s.Description; } }
 function addItem() { const s = loadedData.services.find(x => x.Name === document.getElementById('item_service').value.trim()); if(!s) return customAlert("Select a valid service!"); const q = parseFloat(document.getElementById('item_qty').value); const r = parseFloat(document.getElementById('item_rate').value); if(!q || !r) return; invoiceItems.push({ serviceId: s.ID, name: s.Name, description: document.getElementById('item_desc').value, rate: r, quantity: q, amount: q * r }); ['item_service','item_desc','item_rate'].forEach(id => document.getElementById(id).value = ''); document.getElementById('item_qty').value = '1'; renderItems(); }
+
+// FEATURE: Edit Invoice Items Inline via Modal
+function openEditItemModal(idx) {
+    const item = invoiceItems[idx];
+    document.getElementById('ei_index').value = idx;
+    document.getElementById('ei_name').value = item.name;
+    document.getElementById('ei_desc').value = item.description;
+    document.getElementById('ei_qty').value = item.quantity;
+    document.getElementById('ei_rate').value = item.rate;
+    new bootstrap.Modal(document.getElementById('editItemModal')).show();
+}
+
+function saveEditedItem() {
+    const idx = document.getElementById('ei_index').value;
+    const desc = document.getElementById('ei_desc').value;
+    const qty = parseFloat(document.getElementById('ei_qty').value);
+    const rate = parseFloat(document.getElementById('ei_rate').value);
+    
+    if (!qty || !rate) return customAlert("Qty and Rate are required!");
+    
+    invoiceItems[idx].description = desc;
+    invoiceItems[idx].quantity = qty;
+    invoiceItems[idx].rate = rate;
+    invoiceItems[idx].amount = qty * rate;
+    
+    const modalInst = bootstrap.Modal.getInstance(document.getElementById('editItemModal'));
+    if (modalInst) modalInst.hide();
+    
+    renderItems();
+}
+
 function removeItem(index) { invoiceItems.splice(index, 1); renderItems(); }
-function renderItems() { let tbody = document.getElementById('itemList'); tbody.innerHTML = ''; let total = 0; invoiceItems.forEach((i, idx) => { tbody.innerHTML += `<tr><td class="text-wrap" style="max-width: 200px;"><div class="fw-bold" style="font-size:0.85rem;">${i.name}</div><div class="text-muted" style="font-size:0.75rem;">${i.description}</div></td><td class="align-middle">${i.rate}</td><td class="align-middle">${i.quantity}</td><td class="text-end fw-medium align-middle">${i.amount.toFixed(2)}</td><td class="text-end align-middle"><button class="btn btn-sm text-danger border-0 bg-transparent" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></td></tr>`; total += i.amount; }); document.getElementById('inv_total').value = total.toFixed(2); calculateNet(); }
+
+function renderItems() { 
+    let tbody = document.getElementById('itemList'); 
+    tbody.innerHTML = ''; 
+    let total = 0; 
+    invoiceItems.forEach((i, idx) => { 
+        // FEATURE: Made rows directly clickable to trigger the edit modal safely
+        tbody.innerHTML += `
+        <tr onclick="openEditItemModal(${idx})" style="cursor: pointer;" class="table-hover">
+            <td class="text-wrap" style="max-width: 200px;">
+                <div class="fw-bold text-primary" style="font-size:0.85rem;">${i.name} <i class="bi bi-pencil-square ms-1" style="font-size:0.7rem;"></i></div>
+                <div class="text-muted" style="font-size:0.75rem;">${i.description}</div>
+            </td>
+            <td class="align-middle">${i.rate}</td>
+            <td class="align-middle">${i.quantity}</td>
+            <td class="text-end fw-medium align-middle">${i.amount.toFixed(2)}</td>
+            <td class="text-end align-middle">
+                <button class="btn btn-sm text-danger border-0 bg-transparent" onclick="event.stopPropagation(); removeItem(${idx})"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`; 
+        total += i.amount; 
+    }); 
+    document.getElementById('inv_total').value = total.toFixed(2); 
+    calculateNet(); 
+}
+
 function calculateNet() { let t = parseFloat(document.getElementById('inv_total').value) || 0; let d = parseFloat(document.getElementById('inv_disc').value) || 0; let r = parseFloat(document.getElementById('inv_round').value) || 0; document.getElementById('inv_net').value = (t - d + r).toFixed(2); }
 
 function saveInvoice() { 
@@ -613,7 +656,6 @@ function openEditReceipt(recId) {
     document.getElementById('rec_client_input').value = client ? client.Name : ''; 
     filterInvoicesForReceipt(); 
     
-    // Select the first linked invoice for the edit form context
     document.getElementById('rec_invoice').value = firstRec['Invoice ID'] || ''; 
     document.getElementById('rec_client_input').disabled = true; 
     document.getElementById('rec_client_clear').disabled = true; 
@@ -625,7 +667,6 @@ function openEditReceipt(recId) {
     showView('receiptFormView'); 
 }
 
-// FIXED: TRUE ARRAY WATERFALL ENGINE
 function saveReceipt() { 
     const rid = document.getElementById('r_id').value; 
     const rNum = document.getElementById('rec_num').value; 
@@ -638,12 +679,9 @@ function saveReceipt() {
     if(!clientId || amountLeft <= 0 || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); 
     
     let splitReceipts = [];
-    
-    // We read balances directly from loadedData since optimisticUpdate hasn't run yet
     let tempBalances = {};
     loadedData.invoices.forEach(inv => tempBalances[inv['Invoice ID']] = inv.balance);
 
-    // 1. Fully or partially pay the explicit invoice
     if (startingInvId) {
         const targetInvBal = tempBalances[startingInvId] || 0;
         if (targetInvBal > 0) {
@@ -655,7 +693,6 @@ function saveReceipt() {
         }
     }
 
-    // 2. Waterfall anything remaining to oldest unpaid invoices
     if (amountLeft > 0) {
         let unpaidInvs = loadedData.invoices
             .filter(i => String(i['Client ID']) === String(clientId) && tempBalances[i['Invoice ID']] > 0 && String(i['Invoice ID']) !== String(startingInvId))
@@ -672,16 +709,12 @@ function saveReceipt() {
         }
     }
 
-    // 3. Log any excess cash as an unlinked advance
     if (amountLeft > 0) {
         splitReceipts.push({ recId: rNum, invId: '', date: rDate, amount: amountLeft, mode: rMode, clientId: clientId });
     }
 
-    if(rid) { 
-        executeSave('updateReceiptBatch', rid, splitReceipts); 
-    } else {
-        executeSave('addReceiptBatch', splitReceipts); 
-    }
+    if(rid) { executeSave('updateReceiptBatch', rid, splitReceipts); } 
+    else { executeSave('addReceiptBatch', splitReceipts); }
     
     showView(lastMainView); 
 }
