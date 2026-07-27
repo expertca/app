@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>InvoicePro</title>
+  <title>Invoice Pro</title>
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -18,6 +18,25 @@
     @media (max-width: 767.98px) {
       .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
       .form-view-container { padding-bottom: 90px !important; }
+    }
+    
+    /* FEATURE: View Transition Animation */
+    @keyframes viewFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .app-view.active-view {
+      animation: viewFadeIn 0.25s ease-out forwards;
+    }
+
+    /* FEATURE: Clickable Dashboard Cards */
+    .clickable-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .clickable-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
     }
   </style>
 </head>
@@ -58,21 +77,24 @@
     <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
         <div class="row mb-4">
+            <!-- CLICKABLE OUTSTANDING CARD -->
             <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding</h6>
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding <i class="bi bi-chevron-right float-end"></i></h6>
                     <h2 class="fw-bold text-danger mb-0" id="dashTotalDue">₹0.00</h2>
                 </div>
             </div>
+            <!-- REVENUE CARD -->
             <div class="col-md-4 mb-3">
                 <div class="card border-0 shadow-sm p-4 h-100 bg-white">
                     <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Revenue This Year</h6>
                     <h2 class="fw-bold text-success mb-0" id="dashTotalRev">₹0.00</h2>
                 </div>
             </div>
+            <!-- CLICKABLE OVERDUE CARD -->
             <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices</h6>
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices <i class="bi bi-chevron-right float-end"></i></h6>
                     <h2 class="fw-bold text-warning mb-0" id="dashOverdueCount">0</h2>
                 </div>
             </div>
@@ -100,8 +122,8 @@
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Invoices</h4>
-          <div class="d-flex gap-2">
-            <input type="text" class="form-control form-control-sm" id="searchInvoices" placeholder="Search Invoices..." onkeyup="renderTables()">
+          <div class="d-flex gap-2 w-sm-100">
+            <input type="text" class="form-control form-control-sm" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
           </div>
         </div>
@@ -119,8 +141,8 @@
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Client Master</h4>
-          <div class="d-flex gap-2">
-            <input type="text" class="form-control form-control-sm" id="searchClients" placeholder="Search Clients..." onkeyup="renderTables()">
+          <div class="d-flex gap-2 w-sm-100">
+            <input type="text" class="form-control form-control-sm" id="searchClients" placeholder="Search..." oninput="renderTables()">
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -138,8 +160,8 @@
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Service Master</h4>
-          <div class="d-flex gap-2">
-            <input type="text" class="form-control form-control-sm" id="searchServices" placeholder="Search Services..." onkeyup="renderTables()">
+          <div class="d-flex gap-2 w-sm-100">
+            <input type="text" class="form-control form-control-sm" id="searchServices" placeholder="Search..." oninput="renderTables()">
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -157,8 +179,8 @@
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Receipts</h4>
-          <div class="d-flex gap-2">
-            <input type="text" class="form-control form-control-sm" id="searchReceipts" placeholder="Search Receipts..." onkeyup="renderTables()">
+          <div class="d-flex gap-2 w-sm-100">
+            <input type="text" class="form-control form-control-sm" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -175,18 +197,21 @@
 
 <!-- ================= UNIFIED CLIENT DASHBOARD VIEW ================= -->
 <div id="clientDashboardView" class="app-view d-none d-print-none pb-5">
-  <div class="bg-white shadow-sm p-3 mb-3 sticky-top d-flex justify-content-between align-items-center z-3">
-    <div class="d-flex align-items-center gap-3">
-      <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
-      <h5 class="fw-bold mb-0 text-primary">Client Dashboard</h5>
+  <!-- FEATURE: Unified Sticky Block wraps both Nav and Client Details -->
+  <div class="sticky-top z-3 shadow-sm mb-4" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+    <div class="bg-white p-3 d-flex justify-content-between align-items-center shadow-sm">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+        <h5 class="fw-bold mb-0 text-primary">Client Dashboard</h5>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm px-3 shadow-sm border" id="cd_editBtn" title="Edit Client"><i class="bi bi-pencil"></i></button>
     </div>
-    <button class="btn btn-outline-secondary btn-sm px-3 shadow-sm border" id="cd_editBtn" title="Edit Client"><i class="bi bi-pencil"></i></button>
+    <div class="container-xl max-w-3xl mx-auto px-3 py-3">
+      <div class="card border-0 shadow-sm p-3 bg-white" id="cd_clientDetails"></div>
+    </div>
   </div>
   
-  <div class="container-xl form-view-container max-w-3xl mx-auto">
-    <!-- Tighter padding and condensed design for Client Details -->
-    <div class="card border-0 shadow-sm p-3 mb-4 bg-white" id="cd_clientDetails"></div>
-
+  <div class="container-xl form-view-container max-w-3xl mx-auto px-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
       <h5 class="fw-bold mb-0">Client Ledger</h5>
       <div class="dropdown">
@@ -238,9 +263,8 @@
     <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
   
-  <div class="container-xl form-view-container max-w-3xl mx-auto">
+  <div class="container-xl form-view-container max-w-3xl mx-auto px-3">
     <input type="hidden" id="inv_id"> 
-    
     <div class="input-group input-group-sm mb-2">
         <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span>
         <input class="form-control" list="clientList" id="inv_client" placeholder="Search client...">
@@ -350,7 +374,7 @@
     </div>
     <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl form-view-container max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="c_id">
       <div class="mb-3">
@@ -382,7 +406,7 @@
     </div>
     <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveService()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl form-view-container max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="s_id">
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div>
@@ -405,7 +429,7 @@
     </div>
     <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save</button>
   </div>
-  <div class="container-xl form-view-container max-w-xl mx-auto">
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
     <div class="card p-4 shadow-sm border-0">
       <input type="hidden" id="r_id">
       <input type="hidden" id="rec_client_id">
@@ -513,7 +537,6 @@
   </div>
 </div>
 
-<!-- FEATURE: INVOICE ITEM EDIT MODAL -->
 <div class="modal fade" id="editItemModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
