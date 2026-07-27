@@ -1,5 +1,6 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
 const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec";
+
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
@@ -31,13 +32,39 @@ function confirmDelete(type, id) {
     confirmModal.show();
 }
 
+// FEATURE: View Switching with smooth CSS reflow animation
 function showView(viewId) {
     if(viewId === 'dashboardView' || viewId === 'clientDashboardView') {
         lastMainView = viewId;
     }
-    document.querySelectorAll('.app-view').forEach(v => v.classList.add('d-none'));
-    document.getElementById(viewId).classList.remove('d-none');
+    document.querySelectorAll('.app-view').forEach(v => {
+        v.classList.add('d-none');
+        v.classList.remove('active-view');
+    });
+    
+    const targetView = document.getElementById(viewId);
+    targetView.classList.remove('d-none');
+    
+    // Force DOM reflow to restart CSS animation cleanly
+    void targetView.offsetWidth;
+    targetView.classList.add('active-view');
+    
     window.scrollTo(0, 0);
+}
+
+// FEATURE: Clickable Dashboard Overview Filters
+function viewOutstandingClients() {
+    let tabEl = document.querySelector('button[data-bs-target="#clientsTab"]');
+    new bootstrap.Tab(tabEl).show();
+    document.getElementById('searchClients').value = ':outstanding';
+    renderTables();
+}
+
+function viewOverdueInvoices() {
+    let tabEl = document.querySelector('button[data-bs-target="#invoicesTab"]');
+    new bootstrap.Tab(tabEl).show();
+    document.getElementById('searchInvoices').value = ':overdue';
+    renderTables();
 }
 
 async function importContact() {
@@ -353,31 +380,10 @@ function openReceiptPreview(recId) {
 
 let cdCurrentFilter = '3m';
 
-// FEATURE: Condensed Client Dashboard Header Details
 function openClientDashboard(clientId) {
     currentClientDashboardId = clientId;
     const c = loadedData.clients.find(x => String(x.ID) === String(clientId));
     if(!c) return showView('dashboardView');
-    
-    let contactHTML = ''; 
-    if(c['Contact Name']) contactHTML += `<div class="text-nowrap"><i class="bi bi-person text-muted me-1"></i> ${c['Contact Name']}</div>`;
-    if(c.Mobile) contactHTML += `<div class="text-nowrap"><i class="bi bi-telephone text-muted me-1"></i> ${String(c.Mobile).replace(/^'/, '')}</div>`;
-    if(c.Email) contactHTML += `<div class="text-nowrap"><i class="bi bi-envelope text-muted me-1"></i> ${c.Email}</div>`;
-    
-    let balClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
-    
-    document.getElementById('cd_clientDetails').innerHTML = `
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h6 class="fw-bold mb-1 text-dark" style="font-size: 1rem;">${c.Name}</h6>
-                <div class="text-muted d-flex flex-wrap gap-3" style="font-size:0.75rem;">${contactHTML || 'No contact details provided.'}</div>
-            </div>
-            <div class="text-end bg-light px-3 py-2 rounded border">
-                <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Balance Due</div>
-                <h6 class="fw-bold mb-0 ${balClass}">₹${(c.balanceDue||0).toFixed(2)}</h6>
-            </div>
-        </div>
-    `;
     
     document.getElementById('cd_editBtn').onclick = () => openEditClient(clientId);
     document.getElementById('cd_recordReceiptBtn').onclick = () => openAddReceipt(null, clientId);
@@ -400,6 +406,34 @@ function setCdFilter(val) {
 
 function renderClientDashboard() {
     if(!currentClientDashboardId) return;
+
+    // REACTIVE FIX: Always redraw the header details so balance updates are immediate
+    const c = loadedData.clients.find(x => String(x.ID) === String(currentClientDashboardId));
+    if (c) {
+        let contactHTML = ''; 
+        if(c['Contact Name']) contactHTML += `<div class="text-nowrap"><i class="bi bi-person text-muted me-1"></i> ${c['Contact Name']}</div>`;
+        if(c.Mobile) contactHTML += `<div class="text-nowrap"><i class="bi bi-telephone text-muted me-1"></i> ${String(c.Mobile).replace(/^'/, '')}</div>`;
+        if(c.Email) contactHTML += `<div class="text-nowrap"><i class="bi bi-envelope text-muted me-1"></i> ${c.Email}</div>`;
+        
+        let isOverpaid = c.balanceDue < 0;
+        let absBal = Math.abs(c.balanceDue || 0).toFixed(2);
+        let balClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
+        let dashBalText = c.balanceDue > 0 ? `₹${absBal}` : (isOverpaid ? `+₹${absBal} (Adv)` : `₹0.00`);
+        
+        document.getElementById('cd_clientDetails').innerHTML = `
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-1 text-dark" style="font-size: 1rem;">${c.Name}</h6>
+                    <div class="text-muted d-flex flex-wrap gap-3" style="font-size:0.75rem;">${contactHTML || 'No contact details provided.'}</div>
+                </div>
+                <div class="text-end bg-light px-3 py-2 rounded border">
+                    <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Balance Due</div>
+                    <h6 class="fw-bold mb-0 ${balClass}">${dashBalText}</h6>
+                </div>
+            </div>
+        `;
+    }
+
     const now = new Date(); 
     let startDate = new Date(0); 
     let endDate = new Date('2099-01-01');
@@ -497,11 +531,19 @@ function showActionModal(type, id) {
 }
 function closeActionModal() { const modal = bootstrap.Modal.getInstance(document.getElementById('actionModal')); if(modal) modal.hide(); }
 
+// FEATURE: Render logic respects smart filters for Dashboard clicks
 function renderTables() {
   renderDashboard(); 
 
   const searchInv = document.getElementById('searchInvoices')?.value.toLowerCase() || '';
-  const filteredInvoices = loadedData.invoices.filter(i => i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv));
+  const filteredInvoices = loadedData.invoices.filter(i => {
+      if (searchInv === ':overdue') {
+          let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
+          if(!dueDateStr) { let d = new Date(i.Date); d.setDate(d.getDate() + 15); dueDateStr = d; }
+          return i.balance > 0 && new Date(dueDateStr) < new Date(new Date().setHours(0,0,0,0));
+      }
+      return i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv);
+  });
   
   document.getElementById('invoiceTableBody').innerHTML = filteredInvoices.map(i => {
     let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
@@ -515,11 +557,23 @@ function renderTables() {
   }).join('') || '<tr><td colspan="7" class="text-center text-muted py-4">No invoices found.</td></tr>';
 
   const searchCl = document.getElementById('searchClients')?.value.toLowerCase() || '';
-  const filteredClients = loadedData.clients.filter(c => c.Name.toLowerCase().includes(searchCl) || (c.Mobile && String(c.Mobile).includes(searchCl)));
+  const filteredClients = loadedData.clients.filter(c => {
+      if (searchCl === ':outstanding') return c.balanceDue > 0;
+      return c.Name.toLowerCase().includes(searchCl) || (c.Mobile && String(c.Mobile).includes(searchCl));
+  });
+  
+  // FEATURE: Safely formats positive balances and green advance credits for the Client Master List
   document.getElementById('clientTableBody').innerHTML = filteredClients.map(c => {
-    let balText = c.balanceDue > 0 ? `<span class="text-danger fw-bold">${c.balanceDue.toFixed(2)}</span>` : `<span class="text-success fw-bold">0.00</span>`;
+    let isOverpaid = c.balanceDue < 0;
+    let absBal = Math.abs(c.balanceDue || 0).toFixed(2);
+    
+    let tableBalClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
+    let tableBalText = c.balanceDue > 0 ? absBal : (isOverpaid ? `+${absBal} (Cr)` : `0.00`);
+    let balTextMobile = c.balanceDue > 0 ? `<span class="text-danger fw-bold">${absBal}</span>` : (isOverpaid ? `<span class="text-success fw-bold">+${absBal} (Adv)</span>` : `<span class="text-success fw-bold">0.00</span>`);
+    
     let contactHTML = ''; if(c['Contact Name'] || c.Mobile) { let n = c['Contact Name'] ? `<i class="bi bi-person"></i> ${c['Contact Name']}` : ''; let m = c.Mobile ? `<i class="bi bi-telephone"></i> ${String(c.Mobile).replace(/^'/, '')}` : ''; let sep = (c['Contact Name'] && c.Mobile) ? ' | ' : ''; contactHTML = `<div class="text-muted small mb-1">${n}${sep}${m}</div>`; }
-    return `<tr onclick="openClientDashboard('${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${(c.Mobile ? String(c.Mobile).replace(/^'/, '') : '-')}</td><td class="d-none d-md-table-cell fw-bold ${c.balanceDue > 0 ? 'text-danger' : 'text-success'}">${(c.balanceDue||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balText}</div></td></tr>`;
+    
+    return `<tr onclick="openClientDashboard('${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${(c.Mobile ? String(c.Mobile).replace(/^'/, '') : '-')}</td><td class="d-none d-md-table-cell fw-bold ${tableBalClass}">${tableBalText}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balTextMobile}</div></td></tr>`;
   }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No clients found.</td></tr>';
 
   const searchSr = document.getElementById('searchServices')?.value.toLowerCase() || '';
@@ -549,13 +603,42 @@ function openAddService() { ['s_id','s_name','s_desc','s_rate'].forEach(id => do
 function openEditService(id) { const s = loadedData.services.find(x => String(x.ID) === String(id)); document.getElementById('s_id').value = s.ID; document.getElementById('s_name').value = s.Name; document.getElementById('s_desc').value = s.Description; document.getElementById('s_rate').value = s.Rate; document.getElementById('serviceModalTitle').innerText = 'Edit Service'; showView('serviceFormView'); }
 function saveService() { const id = document.getElementById('s_id').value || generateUID('SRV'); const data = [id, document.getElementById('s_name').value, document.getElementById('s_desc').value, document.getElementById('s_rate').value]; if(!data[1] || !data[3]) return customAlert("Name and Rate required!"); document.getElementById('s_id').value ? executeSave('updateService', ...data) : executeSave('addService', ...data); showView(lastMainView); }
 
-function openAddInvoice() { invoiceItems = []; renderItems(); document.getElementById('inv_id').value = ''; document.getElementById('inv_client').value = ''; document.getElementById('inv_disc').value = '0'; document.getElementById('inv_round').value = '0'; document.getElementById('inv_num').value = loadedData.nextInvoiceNumber || 'INV-TEMP'; document.getElementById('inv_date').valueAsDate = new Date(); autoSetDueDate(); showView('invoiceFormView'); }
-function openEditInvoice(invId) { const inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(invId)); if(!inv) return; document.getElementById('inv_id').value = invId; document.getElementById('inv_client').value = inv['Client Name']; document.getElementById('inv_date').value = inv.Date.substring(0, 10); document.getElementById('inv_due_date').value = inv['Due Date'] ? inv['Due Date'].substring(0, 10) : ''; document.getElementById('inv_num').value = inv['Invoice Number']; document.getElementById('inv_disc').value = inv['Discount']; document.getElementById('inv_round').value = inv['Round Off']; invoiceItems = (loadedData.invoiceItems || []).filter(i => String(i['Invoice ID']) === String(invId)).map(i => ({ serviceId: i['Service ID'], name: i.Name, description: i.Description, rate: parseFloat(i.Rate)||0, quantity: parseFloat(i.Quantity)||0, amount: parseFloat(i.Amount)||0 })); renderItems(); showView('invoiceFormView'); }
+function openAddInvoice() { 
+    invoiceItems = []; 
+    renderItems(); 
+    document.getElementById('inv_id').value = ''; 
+    document.getElementById('inv_client').value = ''; 
+    document.getElementById('inv_disc').value = '0'; 
+    document.getElementById('inv_round').value = '0'; 
+    document.getElementById('inv_num').value = loadedData.nextInvoiceNumber || 'INV-TEMP'; 
+    document.getElementById('inv_date').valueAsDate = new Date(); 
+    autoSetDueDate(); 
+    const initialBlock = document.getElementById('initialReceiptBlock');
+    if(initialBlock) initialBlock.classList.remove('d-none');
+    showView('invoiceFormView'); 
+}
+
+function openEditInvoice(invId) { 
+    const inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(invId)); 
+    if(!inv) return; 
+    document.getElementById('inv_id').value = invId; 
+    document.getElementById('inv_client').value = inv['Client Name']; 
+    document.getElementById('inv_date').value = inv.Date.substring(0, 10); 
+    document.getElementById('inv_due_date').value = inv['Due Date'] ? inv['Due Date'].substring(0, 10) : ''; 
+    document.getElementById('inv_num').value = inv['Invoice Number']; 
+    document.getElementById('inv_disc').value = inv['Discount']; 
+    document.getElementById('inv_round').value = inv['Round Off']; 
+    invoiceItems = (loadedData.invoiceItems || []).filter(i => String(i['Invoice ID']) === String(invId)).map(i => ({ serviceId: i['Service ID'], name: i.Name, description: i.Description, rate: parseFloat(i.Rate)||0, quantity: parseFloat(i.Quantity)||0, amount: parseFloat(i.Amount)||0 })); 
+    renderItems(); 
+    const initialBlock = document.getElementById('initialReceiptBlock');
+    if(initialBlock) initialBlock.classList.add('d-none');
+    showView('invoiceFormView'); 
+}
+
 function autoSetDueDate() { let d = document.getElementById('inv_date').valueAsDate; if(d) { d.setDate(d.getDate() + 15); document.getElementById('inv_due_date').valueAsDate = d; } }
 function autoFillServiceDetails() { const s = loadedData.services.find(x => x.Name === document.getElementById('item_service').value.trim()); if(s) { document.getElementById('item_rate').value = s.Rate; document.getElementById('item_desc').value = s.Description; } }
 function addItem() { const s = loadedData.services.find(x => x.Name === document.getElementById('item_service').value.trim()); if(!s) return customAlert("Select a valid service!"); const q = parseFloat(document.getElementById('item_qty').value); const r = parseFloat(document.getElementById('item_rate').value); if(!q || !r) return; invoiceItems.push({ serviceId: s.ID, name: s.Name, description: document.getElementById('item_desc').value, rate: r, quantity: q, amount: q * r }); ['item_service','item_desc','item_rate'].forEach(id => document.getElementById(id).value = ''); document.getElementById('item_qty').value = '1'; renderItems(); }
 
-// FEATURE: Edit Invoice Items Inline via Modal
 function openEditItemModal(idx) {
     const item = invoiceItems[idx];
     document.getElementById('ei_index').value = idx;
@@ -571,17 +654,13 @@ function saveEditedItem() {
     const desc = document.getElementById('ei_desc').value;
     const qty = parseFloat(document.getElementById('ei_qty').value);
     const rate = parseFloat(document.getElementById('ei_rate').value);
-    
     if (!qty || !rate) return customAlert("Qty and Rate are required!");
-    
     invoiceItems[idx].description = desc;
     invoiceItems[idx].quantity = qty;
     invoiceItems[idx].rate = rate;
     invoiceItems[idx].amount = qty * rate;
-    
     const modalInst = bootstrap.Modal.getInstance(document.getElementById('editItemModal'));
     if (modalInst) modalInst.hide();
-    
     renderItems();
 }
 
@@ -592,7 +671,6 @@ function renderItems() {
     tbody.innerHTML = ''; 
     let total = 0; 
     invoiceItems.forEach((i, idx) => { 
-        // FEATURE: Made rows directly clickable to trigger the edit modal safely
         tbody.innerHTML += `
         <tr onclick="openEditItemModal(${idx})" style="cursor: pointer;" class="table-hover">
             <td class="text-wrap" style="max-width: 200px;">
@@ -681,6 +759,15 @@ function saveReceipt() {
     let splitReceipts = [];
     let tempBalances = {};
     loadedData.invoices.forEach(inv => tempBalances[inv['Invoice ID']] = inv.balance);
+
+    if (rid) {
+        let oldSplits = loadedData.receipts.filter(r => String(r['Receipt ID']) === String(rid));
+        oldSplits.forEach(oldSplit => {
+            if (oldSplit['Invoice ID'] && tempBalances[oldSplit['Invoice ID']] !== undefined) {
+                tempBalances[oldSplit['Invoice ID']] += (parseFloat(oldSplit.Amount) || 0);
+            }
+        });
+    }
 
     if (startingInvId) {
         const targetInvBal = tempBalances[startingInvId] || 0;
