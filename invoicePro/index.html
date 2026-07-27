@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>InvoicePro</title>
+  <title>Invoice Pro</title>
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -19,6 +19,21 @@
       .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
       .form-view-container { padding-bottom: 90px !important; }
     }
+    
+    #cd_clientDetails {
+        transition: all 0.3s ease-in-out;
+        overflow: hidden;
+        max-height: 500px;
+        opacity: 1;
+    }
+    #cd_clientDetails.hide-on-scroll {
+        max-height: 0;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        opacity: 0;
+        border: none !important;
+    }
   </style>
 </head>
 <body>
@@ -28,7 +43,6 @@
   <h5 class="fw-bold" style="color: #4f46e5;" id="loaderText">Loading App...</h5>
 </div>
 
-<!-- ================= 1. DASHBOARD VIEW ================= -->
 <div id="dashboardView" class="app-view d-print-none">
   <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
     <div class="container-xl header-container">
@@ -56,7 +70,6 @@
 
   <div class="container-xl tab-content mt-3">
     
-    <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
         <div class="row mb-4">
             <div class="col-md-4 mb-3">
@@ -98,7 +111,6 @@
         </div>
     </div>
 
-    <!-- INVOICES -->
     <div class="tab-pane fade" id="invoicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -117,7 +129,6 @@
       </div>
     </div>
     
-    <!-- CLIENTS -->
     <div class="tab-pane fade" id="clientsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -136,7 +147,6 @@
       </div>
     </div>
     
-    <!-- SERVICES -->
     <div class="tab-pane fade" id="servicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -155,7 +165,6 @@
       </div>
     </div>
     
-    <!-- RECEIPTS -->
     <div class="tab-pane fade" id="receiptsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -176,7 +185,7 @@
   </div>
 </div>
 
-<!-- ================= NEW: UNIFIED CLIENT DASHBOARD VIEW ================= -->
+<!-- ================= CLIENT DASHBOARD VIEW ================= -->
 <div id="clientDashboardView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
@@ -187,13 +196,8 @@
   </div>
   
   <div class="container-xl form-view-container max-w-3xl mx-auto">
-    
-    <!-- DIV 1: CLIENT DETAILS -->
-    <div class="card border-0 shadow-sm p-4 mb-4 bg-white" id="cd_clientDetails">
-      <!-- Populated dynamically by app.js -->
-    </div>
+    <div class="card border-0 shadow-sm p-4 mb-4 bg-white" id="cd_clientDetails"></div>
 
-    <!-- DIV 2: MAIN AREA (UNIFIED LEDGER) -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
       <h5 class="fw-bold mb-0">Client Ledger</h5>
       <div class="dropdown">
@@ -221,22 +225,21 @@
       </div>
     </div>
     
-    <div class="table-scroll mb-4 bg-white border rounded shadow-sm">
-      <table class="table main-list-table table-hover mb-0">
-        <thead class="d-none d-md-table-header-group table-light"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+    <div class="table-scroll">
+      <table class="table main-list-table table-hover">
+        <thead class="d-none d-md-table-header-group"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
         <tbody id="cd_ledgerList"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- DIV 3: FOOTER -->
   <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-flex gap-2 z-3" style="max-width: 800px; margin: 0 auto;">
     <button class="btn btn-success w-50 py-2 fw-bold" id="cd_recordReceiptBtn"><i class="bi bi-cash-stack"></i> Record Receipt</button>
     <button class="btn btn-info text-white w-50 py-2 fw-bold" id="cd_statementBtn"><i class="bi bi-journal-text"></i> Statement</button>
   </div>
 </div>
 
-<!-- ================= 2. INVOICE FORM VIEW ================= -->
+<!-- ================= INVOICE FORM VIEW ================= -->
 <div id="invoiceFormView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
@@ -248,7 +251,6 @@
   
   <div class="container-xl form-view-container max-w-3xl mx-auto">
     <input type="hidden" id="inv_id"> 
-    
     <div class="input-group input-group-sm mb-2">
         <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span>
         <input class="form-control" list="clientList" id="inv_client" placeholder="Search client...">
@@ -284,12 +286,10 @@
           <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button>
       </div>
       <datalist id="serviceList"></datalist>
-      
       <div class="input-group input-group-sm mb-2">
           <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Desc</span>
           <input type="text" id="item_desc" class="form-control">
       </div>
-      
       <div class="row mb-2">
           <div class="col-6 pe-1">
               <div class="input-group input-group-sm">
@@ -351,7 +351,7 @@
   </div>
 </div>
 
-<!-- ================= 3. CLIENT FORM VIEW ================= -->
+<!-- ================= CLIENT FORM VIEW ================= -->
 <div id="clientFormView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
@@ -383,7 +383,7 @@
   </div>
 </div>
 
-<!-- ================= 4. SERVICE FORM VIEW ================= -->
+<!-- ================= SERVICE FORM VIEW ================= -->
 <div id="serviceFormView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
@@ -406,7 +406,7 @@
   </div>
 </div>
 
-<!-- ================= 5. RECEIPT FORM VIEW ================= -->
+<!-- ================= RECEIPT FORM VIEW ================= -->
 <div id="receiptFormView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex justify-content-between align-items-center z-3">
     <div class="d-flex align-items-center gap-3">
@@ -442,16 +442,14 @@
   </div>
 </div>
 
-<!-- ================= 6. UNIVERSAL PREVIEW VIEW ================= -->
+<!-- ================= PREVIEW VIEW ================= -->
 <div id="previewView" class="app-view d-none d-print-none pb-5">
   <div class="bg-white shadow-sm p-3 mb-4 sticky-top d-flex flex-wrap justify-content-between align-items-center gap-2 z-3">
     <div class="d-flex align-items-center gap-3">
       <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
       <h5 class="fw-bold mb-0 text-primary d-none d-sm-block" id="previewPageTitle">Preview</h5>
     </div>
-    
     <button id="btnOpenFilter" class="btn btn-outline-primary btn-sm d-none ms-auto ms-md-0 me-2" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="bi bi-funnel"></i> Filter</button>
-
     <div class="d-flex align-items-center gap-2 ms-auto ms-md-0">
         <div class="btn-group shadow-sm">
           <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
