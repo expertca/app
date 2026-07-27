@@ -17,19 +17,18 @@
   <style>
     @media (max-width: 767.98px) {
       .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
-      .form-view-container { padding-bottom: 90px !important; }
     }
     
-    /* FEATURE: View Transition Animation */
+    .form-view-container { padding-bottom: 90px !important; }
+    
     @keyframes viewFadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     .app-view.active-view {
       animation: viewFadeIn 0.25s ease-out forwards;
     }
 
-    /* FEATURE: Clickable Dashboard Cards */
     .clickable-card {
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       cursor: pointer;
@@ -38,6 +37,10 @@
       transform: translateY(-3px);
       box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
     }
+    
+    /* Clean inner border removal for clear buttons */
+    .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
+    .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
   </style>
 </head>
 <body>
@@ -52,11 +55,11 @@
   <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
     <div class="container-xl header-container">
       <div class="header-top-row d-md-none">
-        <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> InvoicePro</h1>
+        <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> Invoice Pro</h1>
         <span class="badge bg-secondary sync-badge" style="font-size: 0.6rem;">Connecting...</span>
       </div>
       <div class="header-left d-none d-md-flex brand">
-        <i class="bi bi-layers-fill"></i> InvoicePro
+        <i class="bi bi-layers-fill"></i> Invoice Pro
       </div>
       <div class="header-center nav-wrapper mt-2 mt-md-0">
         <ul class="nav nav-pills" id="appTabs" role="tablist">
@@ -77,21 +80,18 @@
     <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
         <div class="row mb-4">
-            <!-- CLICKABLE OUTSTANDING CARD -->
             <div class="col-md-4 mb-3">
                 <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
                     <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding <i class="bi bi-chevron-right float-end"></i></h6>
                     <h2 class="fw-bold text-danger mb-0" id="dashTotalDue">₹0.00</h2>
                 </div>
             </div>
-            <!-- REVENUE CARD -->
             <div class="col-md-4 mb-3">
                 <div class="card border-0 shadow-sm p-4 h-100 bg-white">
                     <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Revenue This Year</h6>
                     <h2 class="fw-bold text-success mb-0" id="dashTotalRev">₹0.00</h2>
                 </div>
             </div>
-            <!-- CLICKABLE OVERDUE CARD -->
             <div class="col-md-4 mb-3">
                 <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
                     <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices <i class="bi bi-chevron-right float-end"></i></h6>
@@ -117,13 +117,16 @@
         </div>
     </div>
 
-    <!-- INVOICES -->
+    <!-- INVOICES TAB -->
     <div class="tab-pane fade" id="invoicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Invoices</h4>
           <div class="d-flex gap-2 w-sm-100">
-            <input type="text" class="form-control form-control-sm" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
+            <div class="input-group input-group-sm flex-grow-1">
+              <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
+              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            </div>
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
           </div>
         </div>
@@ -136,13 +139,16 @@
       </div>
     </div>
     
-    <!-- CLIENTS -->
+    <!-- CLIENTS TAB -->
     <div class="tab-pane fade" id="clientsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Client Master</h4>
           <div class="d-flex gap-2 w-sm-100">
-            <input type="text" class="form-control form-control-sm" id="searchClients" placeholder="Search..." oninput="renderTables()">
+            <div class="input-group input-group-sm flex-grow-1">
+              <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
+              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            </div>
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -155,13 +161,16 @@
       </div>
     </div>
     
-    <!-- SERVICES -->
+    <!-- SERVICES TAB -->
     <div class="tab-pane fade" id="servicesTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Service Master</h4>
           <div class="d-flex gap-2 w-sm-100">
-            <input type="text" class="form-control form-control-sm" id="searchServices" placeholder="Search..." oninput="renderTables()">
+            <div class="input-group input-group-sm flex-grow-1">
+              <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
+              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            </div>
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -174,13 +183,16 @@
       </div>
     </div>
     
-    <!-- RECEIPTS -->
+    <!-- RECEIPTS TAB -->
     <div class="tab-pane fade" id="receiptsTab">
       <div class="table-container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h4 class="mb-0 fw-bold">Receipts</h4>
           <div class="d-flex gap-2 w-sm-100">
-            <input type="text" class="form-control form-control-sm" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
+            <div class="input-group input-group-sm flex-grow-1">
+              <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
+              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            </div>
             <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
           </div>
         </div>
@@ -196,8 +208,7 @@
 </div>
 
 <!-- ================= UNIFIED CLIENT DASHBOARD VIEW ================= -->
-<div id="clientDashboardView" class="app-view d-none d-print-none pb-5">
-  <!-- FEATURE: Unified Sticky Block wraps both Nav and Client Details -->
+<div id="clientDashboardView" class="app-view d-none d-print-none">
   <div class="sticky-top z-3 shadow-sm mb-4" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
     <div class="bg-white p-3 d-flex justify-content-between align-items-center shadow-sm">
       <div class="d-flex align-items-center gap-3">
@@ -211,7 +222,7 @@
     </div>
   </div>
   
-  <div class="container-xl form-view-container max-w-3xl mx-auto px-3">
+  <div class="container-xl form-view-container max-w-3xl mx-auto px-3 pb-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
       <h5 class="fw-bold mb-0">Client Ledger</h5>
       <div class="dropdown">
@@ -239,7 +250,7 @@
       </div>
     </div>
     
-    <div class="table-scroll">
+    <div class="table-scroll mb-5">
       <table class="table main-list-table table-hover">
         <thead class="d-none d-md-table-header-group"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
         <tbody id="cd_ledgerList"></tbody>
@@ -247,9 +258,11 @@
     </div>
   </div>
 
-  <div class="fixed-bottom-mobile p-3 bg-white border-top shadow-lg d-flex gap-2 z-3" style="max-width: 800px; margin: 0 auto;">
-    <button class="btn btn-success w-50 py-2 fw-bold" id="cd_recordReceiptBtn"><i class="bi bi-cash-stack"></i> Record Receipt</button>
-    <button class="btn btn-info text-white w-50 py-2 fw-bold" id="cd_statementBtn"><i class="bi bi-journal-text"></i> Statement</button>
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg z-3">
+    <div class="p-3 d-flex gap-2 mx-auto" style="max-width: 800px;">
+        <button class="btn btn-success w-50 py-2 fw-bold" id="cd_recordReceiptBtn"><i class="bi bi-cash-stack"></i> Record Receipt</button>
+        <button class="btn btn-info text-white w-50 py-2 fw-bold" id="cd_statementBtn"><i class="bi bi-journal-text"></i> Statement</button>
+    </div>
   </div>
 </div>
 
@@ -267,8 +280,8 @@
     <input type="hidden" id="inv_id"> 
     <div class="input-group input-group-sm mb-2">
         <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span>
-        <input class="form-control" list="clientList" id="inv_client" placeholder="Search client...">
-        <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('inv_client').value=''"><i class="bi bi-x"></i></button>
+        <input class="form-control border-end-0" list="clientList" id="inv_client" placeholder="Search client...">
+        <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('inv_client').value=''"><i class="bi bi-x"></i></button>
     </div>
     <datalist id="clientList"></datalist>
 
@@ -296,8 +309,8 @@
     <div class="card p-2 p-md-3 mb-4 shadow-sm border-0">
       <div class="input-group input-group-sm mb-2">
           <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Service</span>
-          <input class="form-control" list="serviceList" id="item_service" onchange="autoFillServiceDetails()" placeholder="Search...">
-          <button class="btn btn-outline-secondary bg-white border-start-0" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button>
+          <input class="form-control border-end-0" list="serviceList" id="item_service" onchange="autoFillServiceDetails()" placeholder="Search...">
+          <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button>
       </div>
       <datalist id="serviceList"></datalist>
       <div class="input-group input-group-sm mb-2">
@@ -437,8 +450,8 @@
       <div class="mb-3">
           <label class="form-label text-muted small fw-bold">Client *</label>
           <div class="input-group">
-             <input class="form-control" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client...">
-             <button class="btn btn-outline-secondary bg-white border-start-0" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button>
+             <input class="form-control border-end-0" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client...">
+             <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button>
           </div>
           <datalist id="receiptClientList"></datalist>
       </div>
