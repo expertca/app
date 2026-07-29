@@ -1,6 +1,5 @@
 // ====== IMPORTANT: PASTE YOUR GOOGLE WEB APP URL HERE ======
 const API_URL = "https://script.google.com/macros/s/AKfycbw5nV8VCp3w_gmVck3MjYzG8vEegFLESFM8RB0PA5bb5rtocmDDn3O8fM0iolY-XCYQ/exec";
-
 let loadedData = { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] };
 let invoiceItems = [];
 let currentStmtClient = null;
@@ -11,6 +10,13 @@ let currentClientDashboardId = null;
 let lastMainView = 'dashboardView'; 
 
 function generateUID(prefix) { return prefix + '-' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
+
+// 10-Digit Mobile Stripper helper
+function displayMobile(m) {
+    if(!m) return '-';
+    let s = String(m).replace(/[^\d]/g, '');
+    return s.length >= 10 ? s.slice(-10) : s;
+}
 
 function customAlert(message) { 
     document.getElementById('alertMessage').innerText = message; 
@@ -32,7 +38,6 @@ function confirmDelete(type, id) {
     confirmModal.show();
 }
 
-// FEATURE: View Switching with smooth CSS reflow animation
 function showView(viewId) {
     if(viewId === 'dashboardView' || viewId === 'clientDashboardView') {
         lastMainView = viewId;
@@ -44,15 +49,11 @@ function showView(viewId) {
     
     const targetView = document.getElementById(viewId);
     targetView.classList.remove('d-none');
-    
-    // Force DOM reflow to restart CSS animation cleanly
     void targetView.offsetWidth;
     targetView.classList.add('active-view');
-    
     window.scrollTo(0, 0);
 }
 
-// FEATURE: Clickable Dashboard Overview Filters
 function viewOutstandingClients() {
     let tabEl = document.querySelector('button[data-bs-target="#clientsTab"]');
     new bootstrap.Tab(tabEl).show();
@@ -298,7 +299,18 @@ function sendWhatsAppReminder(invId) {
     const client = loadedData.clients.find(c => c.ID === inv['Client ID']);
     if(!client || !client.Mobile) return customAlert("No mobile number saved for this client.");
     const phone = client.Mobile.replace(/[^\d]/g, '');
-    const text = `Hello ${inv['Client Name']},\n\nA gentle reminder that Invoice *${inv['Invoice Number']}* has a pending balance of *₹${inv.balance.toFixed(2)}*.\n\nPlease let us know when this can be cleared. Thank you!`;
+    
+    let text = `Hello ${inv['Client Name']},\n\nA gentle reminder that Invoice *${inv['Invoice Number']}* has a pending balance of *₹${inv.balance.toFixed(2)}*.\n`;
+    
+    // Add UPI Link if configured in company data
+    let upiId = loadedData.company['UpiId'];
+    if(upiId) {
+       let upiName = loadedData.company['UpiName'] || '';
+       let upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&tn=Invoice+${inv['Invoice Number']}&am=${inv.balance.toFixed(2)}&cu=INR`;
+       text += `\nYou can pay directly via UPI using this link:\n${upiLink}\n`;
+    }
+    
+    text += `\nPlease let us know when this can be cleared. Thank you!`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
@@ -348,11 +360,19 @@ function openInvoicePreview(invId) {
   let net = parseFloat(inv['Net Amount']) || 0; let paid = inv.paidAmount || 0; let bal = inv.balance || 0;
   let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
   let items = loadedData.invoiceItems.filter(i => String(i['Invoice ID']) === String(invId)); let itemsHtml = items.map(i => `<tr><td><strong class="text-dark">${i.Name}</strong><br><span class="text-muted">${i.Description}</span></td><td>${parseFloat(i.Rate).toFixed(2)}</td><td>${i.Quantity}</td><td class="text-end fw-bold">${parseFloat(i.Amount).toFixed(2)}</td></tr>`).join('');
-  let contactHtml = client ? `${client['Contact Name'] || ''}<br>${(client.Mobile ? String(client.Mobile).replace(/^'/, '') : '')}<br>${client.Email || ''}` : ''; let advanceRow = ''; if (bal < 0) { bal = 0; advanceRow = `<tr class="bg-light text-success"><td><h6 class="mt-2 fw-bold mb-2">Overpaid / Advance</h6></td><td><h6 class="mt-2 fw-bold mb-2">${Math.abs(inv.balance).toFixed(2)}</h6></td></tr>`; }
+  let contactHtml = client ? `${client['Contact Name'] || ''}<br>${displayMobile(client.Mobile)}<br>${client.Email || ''}` : ''; let advanceRow = ''; if (bal < 0) { bal = 0; advanceRow = `<tr class="bg-light text-success"><td><h6 class="mt-2 fw-bold mb-2">Overpaid / Advance</h6></td><td><h6 class="mt-2 fw-bold mb-2">${Math.abs(inv.balance).toFixed(2)}</h6></td></tr>`; }
   
   let dueDateHtml = inv['Due Date'] ? `<p class="mb-0"><span class="text-muted fw-bold me-1">Due Date:</span> <span>${inv['Due Date'].substring(0, 10)}</span></p>` : '';
 
-  let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #4f46e5; letter-spacing: -0.5px;">INVOICE</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Invoice #:</span> <span class="fw-bold">${inv['Invoice Number']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${inv.Date.substring(0, 10)}</span></p>${dueDateHtml}</div></div><div class="row mb-3"><div class="col-12"><p class="text-muted fw-bold mb-1" style="letter-spacing: 0.5px;">BILLED TO</p><h6 class="fw-bold text-dark">${inv['Client Name']}</h6><div class="text-muted" style="line-height: 1.4;">${contactHtml}</div></div></div><table class="table table-sm table-bordered border-dark"><thead style="background-color: #f8fafc;"><tr><th>Description</th><th style="width: 15%;">Rate</th><th style="width: 10%;">Qty</th><th class="text-end" style="width: 20%;">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="row"><div class="col-6"></div><div class="col-6"><table class="table table-sm table-borderless text-end mb-0"><tr><td class="text-muted">Subtotal</td><td>${parseFloat(inv['Total Amount']||0).toFixed(2)}</td></tr><tr><td class="text-muted">Discount</td><td>${parseFloat(inv['Discount']||0).toFixed(2)}</td></tr><tr class="border-bottom border-dark"><td class="text-muted">Round Off</td><td>${parseFloat(inv['Round Off']||0).toFixed(2)}</td></tr><tr><td class="fw-bold text-dark pt-2">Net Total</td><td class="fw-bold text-dark pt-2">${net.toFixed(2)}</td></tr><tr><td class="text-muted pb-2">Amount Paid</td><td class="text-success pb-2">${paid.toFixed(2)}</td></tr><tr style="background-color: #f8fafc;"><td><h6 class="mt-2 fw-bold text-dark mb-2">Balance Due</h6></td><td><h6 class="mt-2 fw-bold text-dark mb-2">${bal.toFixed(2)}</h6></td></tr>${advanceRow}</table></div></div><div class="row print-footer align-items-end mt-4 pt-4"><div class="col-7"><p class="text-dark fw-bold mb-1">Terms & Conditions</p><p class="text-muted" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Terms'] || 'Thank you for your business!'}</p></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
+  // Append UPI logic cleanly into the footer block
+  let upiId = loadedData.company['UpiId'];
+  let upiHtml = '';
+  if(upiId) {
+      let upiName = loadedData.company['UpiName'] || '';
+      upiHtml = `<div class="mt-3"><p class="mb-0 text-dark fw-bold">UPI Payment Details</p><p class="text-muted small mb-0">UPI ID: ${upiId}<br>Name: ${upiName}</p></div>`;
+  }
+
+  let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #4f46e5; letter-spacing: -0.5px;">INVOICE</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Invoice #:</span> <span class="fw-bold">${inv['Invoice Number']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${inv.Date.substring(0, 10)}</span></p>${dueDateHtml}</div></div><div class="row mb-3"><div class="col-12"><p class="text-muted fw-bold mb-1" style="letter-spacing: 0.5px;">BILLED TO</p><h6 class="fw-bold text-dark">${inv['Client Name']}</h6><div class="text-muted" style="line-height: 1.4;">${contactHtml}</div></div></div><table class="table table-sm table-bordered border-dark"><thead style="background-color: #f8fafc;"><tr><th>Description</th><th style="width: 15%;">Rate</th><th style="width: 10%;">Qty</th><th class="text-end" style="width: 20%;">Amount</th></tr></thead><tbody>${itemsHtml}</tbody></table><div class="row"><div class="col-6"></div><div class="col-6"><table class="table table-sm table-borderless text-end mb-0"><tr><td class="text-muted">Subtotal</td><td>${parseFloat(inv['Total Amount']||0).toFixed(2)}</td></tr><tr><td class="text-muted">Discount</td><td>${parseFloat(inv['Discount']||0).toFixed(2)}</td></tr><tr class="border-bottom border-dark"><td class="text-muted">Round Off</td><td>${parseFloat(inv['Round Off']||0).toFixed(2)}</td></tr><tr><td class="fw-bold text-dark pt-2">Net Total</td><td class="fw-bold text-dark pt-2">${net.toFixed(2)}</td></tr><tr><td class="text-muted pb-2">Amount Paid</td><td class="text-success pb-2">${paid.toFixed(2)}</td></tr><tr style="background-color: #f8fafc;"><td><h6 class="mt-2 fw-bold text-dark mb-2">Balance Due</h6></td><td><h6 class="mt-2 fw-bold text-dark mb-2">${bal.toFixed(2)}</h6></td></tr>${advanceRow}</table></div></div><div class="row print-footer align-items-end mt-4 pt-4"><div class="col-7"><p class="text-dark fw-bold mb-1">Terms & Conditions</p><p class="text-muted" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Terms'] || 'Thank you for your business!'}</p>${upiHtml}</div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
   setupPreviewPage('Invoice Preview', html, { type: 'Invoice', id: inv['Invoice Number'], clientName: inv['Client Name'] }, () => openEditInvoice(invId), () => confirmDelete('invoice', invId));
 }
 
@@ -378,7 +398,7 @@ function openReceiptPreview(recId) {
     setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: firstRec['Receipt ID'], clientName: clientName }, () => openEditReceipt(recId), () => confirmDelete('receipt', recId));
 }
 
-let cdCurrentFilter = '3m';
+let cdCurrentFilter = '6m';
 
 function openClientDashboard(clientId) {
     currentClientDashboardId = clientId;
@@ -391,7 +411,7 @@ function openClientDashboard(clientId) {
     
     document.getElementById('cd_customDates').classList.add('d-none');
     document.getElementById('cd_customDates').classList.remove('d-flex');
-    cdCurrentFilter = '3m';
+    cdCurrentFilter = '6m'; // Defaults to 6m
     
     renderClientDashboard();
     showView('clientDashboardView');
@@ -407,18 +427,17 @@ function setCdFilter(val) {
 function renderClientDashboard() {
     if(!currentClientDashboardId) return;
 
-    // REACTIVE FIX: Always redraw the header details so balance updates are immediate
     const c = loadedData.clients.find(x => String(x.ID) === String(currentClientDashboardId));
     if (c) {
         let contactHTML = ''; 
         if(c['Contact Name']) contactHTML += `<div class="text-nowrap"><i class="bi bi-person text-muted me-1"></i> ${c['Contact Name']}</div>`;
-        if(c.Mobile) contactHTML += `<div class="text-nowrap"><i class="bi bi-telephone text-muted me-1"></i> ${String(c.Mobile).replace(/^'/, '')}</div>`;
+        if(c.Mobile) contactHTML += `<div class="text-nowrap"><i class="bi bi-telephone text-muted me-1"></i> ${displayMobile(c.Mobile)}</div>`;
         if(c.Email) contactHTML += `<div class="text-nowrap"><i class="bi bi-envelope text-muted me-1"></i> ${c.Email}</div>`;
         
         let isOverpaid = c.balanceDue < 0;
         let absBal = Math.abs(c.balanceDue || 0).toFixed(2);
         let balClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
-        let dashBalText = c.balanceDue > 0 ? `₹${absBal}` : (isOverpaid ? `+₹${absBal} (Adv)` : `₹0.00`);
+        let dashBalText = c.balanceDue > 0 ? `₹${absBal}` : (isOverpaid ? `+₹${absBal}` : `₹0.00`);
         
         document.getElementById('cd_clientDetails').innerHTML = `
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -491,7 +510,7 @@ function renderClientDashboard() {
     }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">No ledger records found for this period.</td></tr>';
 }
 
-function openStatement(clientId) { currentStmtClient = loadedData.clients.find(c => String(c.ID) === String(clientId)); if(!currentStmtClient) return; document.getElementById('previewStmtFilter').value = '3m'; document.getElementById('previewCustomDates').classList.add('d-none'); generateStatementPreview(); }
+function openStatement(clientId) { currentStmtClient = loadedData.clients.find(c => String(c.ID) === String(clientId)); if(!currentStmtClient) return; document.getElementById('previewStmtFilter').value = '6m'; document.getElementById('previewCustomDates').classList.add('d-none'); generateStatementPreview(); }
 function handlePreviewFilterChange() { const val = document.getElementById('previewStmtFilter').value; if(val === 'custom') { document.getElementById('previewCustomDates').classList.remove('d-none'); } else { document.getElementById('previewCustomDates').classList.add('d-none'); } }
 function applyStatementFilter() { const modal = bootstrap.Modal.getInstance(document.getElementById('filterModal')); if (modal) modal.hide(); generateStatementPreview(); }
 
@@ -531,19 +550,20 @@ function showActionModal(type, id) {
 }
 function closeActionModal() { const modal = bootstrap.Modal.getInstance(document.getElementById('actionModal')); if(modal) modal.hide(); }
 
-// FEATURE: Render logic respects smart filters for Dashboard clicks
 function renderTables() {
   renderDashboard(); 
 
   const searchInv = document.getElementById('searchInvoices')?.value.toLowerCase() || '';
-  const filteredInvoices = loadedData.invoices.filter(i => {
-      if (searchInv === ':overdue') {
-          let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
-          if(!dueDateStr) { let d = new Date(i.Date); d.setDate(d.getDate() + 15); dueDateStr = d; }
-          return i.balance > 0 && new Date(dueDateStr) < new Date(new Date().setHours(0,0,0,0));
-      }
-      return i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv);
-  });
+  const filteredInvoices = loadedData.invoices
+    .filter(i => {
+        if (searchInv === ':overdue') {
+            let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
+            if(!dueDateStr) { let d = new Date(i.Date); d.setDate(d.getDate() + 15); dueDateStr = d; }
+            return i.balance > 0 && new Date(dueDateStr) < new Date(new Date().setHours(0,0,0,0));
+        }
+        return i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv);
+    })
+    .sort((a,b) => new Date(b.Date) - new Date(a.Date) || b['Invoice Number'].localeCompare(a['Invoice Number'])); // Array Sort Newest First
   
   document.getElementById('invoiceTableBody').innerHTML = filteredInvoices.map(i => {
     let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
@@ -562,18 +582,17 @@ function renderTables() {
       return c.Name.toLowerCase().includes(searchCl) || (c.Mobile && String(c.Mobile).includes(searchCl));
   });
   
-  // FEATURE: Safely formats positive balances and green advance credits for the Client Master List
   document.getElementById('clientTableBody').innerHTML = filteredClients.map(c => {
     let isOverpaid = c.balanceDue < 0;
     let absBal = Math.abs(c.balanceDue || 0).toFixed(2);
     
     let tableBalClass = c.balanceDue > 0 ? 'text-danger' : 'text-success';
-    let tableBalText = c.balanceDue > 0 ? absBal : (isOverpaid ? `+${absBal} (Cr)` : `0.00`);
-    let balTextMobile = c.balanceDue > 0 ? `<span class="text-danger fw-bold">${absBal}</span>` : (isOverpaid ? `<span class="text-success fw-bold">+${absBal} (Adv)</span>` : `<span class="text-success fw-bold">0.00</span>`);
+    let tableBalText = c.balanceDue > 0 ? absBal : (isOverpaid ? `+${absBal}` : `0.00`);
+    let balTextMobile = c.balanceDue > 0 ? `<span class="text-danger fw-bold">${absBal}</span>` : (isOverpaid ? `<span class="text-success fw-bold">+${absBal}</span>` : `<span class="text-success fw-bold">0.00</span>`);
     
-    let contactHTML = ''; if(c['Contact Name'] || c.Mobile) { let n = c['Contact Name'] ? `<i class="bi bi-person"></i> ${c['Contact Name']}` : ''; let m = c.Mobile ? `<i class="bi bi-telephone"></i> ${String(c.Mobile).replace(/^'/, '')}` : ''; let sep = (c['Contact Name'] && c.Mobile) ? ' | ' : ''; contactHTML = `<div class="text-muted small mb-1">${n}${sep}${m}</div>`; }
+    let contactHTML = ''; if(c['Contact Name'] || c.Mobile) { let n = c['Contact Name'] ? `<i class="bi bi-person"></i> ${c['Contact Name']}` : ''; let m = c.Mobile ? `<i class="bi bi-telephone"></i> ${displayMobile(c.Mobile)}` : ''; let sep = (c['Contact Name'] && c.Mobile) ? ' | ' : ''; contactHTML = `<div class="text-muted small mb-1">${n}${sep}${m}</div>`; }
     
-    return `<tr onclick="openClientDashboard('${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${(c.Mobile ? String(c.Mobile).replace(/^'/, '') : '-')}</td><td class="d-none d-md-table-cell fw-bold ${tableBalClass}">${tableBalText}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balTextMobile}</div></td></tr>`;
+    return `<tr onclick="openClientDashboard('${c.ID}')"><td class="d-none d-md-table-cell fw-medium">${c.Name}</td><td class="d-none d-md-table-cell text-muted">${c['Contact Name'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${displayMobile(c.Mobile)}</td><td class="d-none d-md-table-cell fw-bold ${tableBalClass}">${tableBalText}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light text-success me-1 mb-1" onclick="event.stopPropagation(); openAddReceipt(null, '${c.ID}')" title="Record Receipt"><i class="bi bi-cash-stack"></i></button><button class="btn btn-sm btn-info text-white me-1 mb-1" onclick="event.stopPropagation(); openStatement('${c.ID}')" title="Statement"><i class="bi bi-journal-text"></i></button><button class="btn btn-sm btn-light mb-1" onclick="event.stopPropagation(); openEditClient('${c.ID}')" title="Edit"><i class="bi bi-pencil"></i></button></td><td class="d-md-none p-3"><div class="text-wrap fw-bold mb-1" style="font-size: 0.95rem;">${c.Name}</div>${contactHTML}<div class="small fw-bold mt-1">Balance: ${balTextMobile}</div></td></tr>`;
   }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No clients found.</td></tr>';
 
   const searchSr = document.getElementById('searchServices')?.value.toLowerCase() || '';
@@ -584,7 +603,11 @@ function renderTables() {
 
   const searchRc = document.getElementById('searchReceipts')?.value.toLowerCase() || '';
   let mergedAll = getMergedReceiptsList(loadedData.receipts);
-  const filteredReceipts = mergedAll.filter(r => String(r['Receipt ID']).toLowerCase().includes(searchRc));
+  
+  // Array Sort Newest First for Receipts Tab
+  const filteredReceipts = mergedAll
+    .filter(r => String(r['Receipt ID']).toLowerCase().includes(searchRc))
+    .sort((a,b) => new Date(b.Date) - new Date(a.Date) || b['Receipt ID'].localeCompare(a['Receipt ID']));
   
   document.getElementById('receiptTableBody').innerHTML = filteredReceipts.map(r => {
     let cl = loadedData.clients.find(c => String(c.ID) === String(r['Client ID']));
@@ -597,11 +620,35 @@ function renderTables() {
 
 function openAddClient() { ['c_id','c_name','c_contact','c_email','c_mobile'].forEach(id => document.getElementById(id).value = ''); document.getElementById('clientModalTitle').innerText = 'Add Client'; showView('clientFormView'); }
 function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID) === String(id)); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile ? String(c.Mobile).replace(/^'/, '') : ''; document.getElementById('clientModalTitle').innerText = 'Edit Client'; showView('clientFormView'); }
-function saveClient() { const id = document.getElementById('c_id').value || generateUID('CLI'); let mobileVal = document.getElementById('c_mobile').value; mobileVal = mobileVal ? mobileVal.replace(/^'/, '') : ''; const data = [id, document.getElementById('c_name').value, document.getElementById('c_contact').value, document.getElementById('c_email').value, mobileVal]; if(!data[1]) return customAlert("Client name required!"); document.getElementById('c_id').value ? executeSave('updateClient', ...data) : executeSave('addClient', ...data); showView(lastMainView); }
+
+// UPPERCASE applied directly before save
+function saveClient() { 
+    const id = document.getElementById('c_id').value || generateUID('CLI'); 
+    let mobileVal = document.getElementById('c_mobile').value; 
+    mobileVal = mobileVal ? mobileVal.replace(/^'/, '') : ''; 
+    const name = document.getElementById('c_name').value.trim().toUpperCase();
+    const contact = document.getElementById('c_contact').value.trim().toUpperCase();
+    const email = document.getElementById('c_email').value;
+    const data = [id, name, contact, email, mobileVal]; 
+    if(!data[1]) return customAlert("Client name required!"); 
+    document.getElementById('c_id').value ? executeSave('updateClient', ...data) : executeSave('addClient', ...data); 
+    showView(lastMainView); 
+}
 
 function openAddService() { ['s_id','s_name','s_desc','s_rate'].forEach(id => document.getElementById(id).value = ''); document.getElementById('serviceModalTitle').innerText = 'Add Service'; showView('serviceFormView'); }
 function openEditService(id) { const s = loadedData.services.find(x => String(x.ID) === String(id)); document.getElementById('s_id').value = s.ID; document.getElementById('s_name').value = s.Name; document.getElementById('s_desc').value = s.Description; document.getElementById('s_rate').value = s.Rate; document.getElementById('serviceModalTitle').innerText = 'Edit Service'; showView('serviceFormView'); }
-function saveService() { const id = document.getElementById('s_id').value || generateUID('SRV'); const data = [id, document.getElementById('s_name').value, document.getElementById('s_desc').value, document.getElementById('s_rate').value]; if(!data[1] || !data[3]) return customAlert("Name and Rate required!"); document.getElementById('s_id').value ? executeSave('updateService', ...data) : executeSave('addService', ...data); showView(lastMainView); }
+
+// UPPERCASE applied directly before save
+function saveService() { 
+    const id = document.getElementById('s_id').value || generateUID('SRV'); 
+    const name = document.getElementById('s_name').value.trim().toUpperCase();
+    const desc = document.getElementById('s_desc').value;
+    const rate = document.getElementById('s_rate').value;
+    const data = [id, name, desc, rate]; 
+    if(!data[1] || !data[3]) return customAlert("Name and Rate required!"); 
+    document.getElementById('s_id').value ? executeSave('updateService', ...data) : executeSave('addService', ...data); 
+    showView(lastMainView); 
+}
 
 function openAddInvoice() { 
     invoiceItems = []; 
