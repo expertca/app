@@ -1,261 +1,613 @@
-function doPost(e) {
-  try {
-    const request = JSON.parse(e.postData.contents);
-    const action = request.action;
-    const params = request.params || [];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>InvoicePro</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#4f46e5">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+  <style>
+    @media (max-width: 767.98px) {
+      .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
+    }
     
-    let result;
-    if (action === 'getInitialData') result = getInitialData();
-    else if (action === 'addClient') result = addClient(...params);
-    else if (action === 'updateClient') result = updateClient(...params);
-    else if (action === 'addService') result = addService(...params);
-    else if (action === 'updateService') result = updateService(...params);
-    else if (action === 'addInvoice') result = addInvoice(...params);
-    else if (action === 'updateInvoice') result = updateInvoice(...params);
-    else if (action === 'addReceiptBatch') result = addReceiptBatch(...params);
-    else if (action === 'updateReceiptBatch') result = updateReceiptBatch(...params);
-    else if (action === 'deleteRecord') result = deleteRecord(...params);
-    else throw new Error("Unknown action: " + action);
-
-    return ContentService.createTextOutput(JSON.stringify({success: true, data: result}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({success: false, error: error.message}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet() { return ContentService.createTextOutput("API is active."); }
-
-function setupDatabase() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const schemas = {
-    'Company': ['Key', 'Value'],
-    'Services': ['ID', 'Name', 'Description', 'Rate'],
-    'Clients': ['ID', 'Name', 'Contact Name', 'Email', 'Mobile'],
-    'Invoices': ['Invoice ID', 'Client ID', 'Client Name', 'Date', 'Due Date', 'Invoice Number', 'Total Amount', 'Round Off', 'Discount', 'Net Amount', 'Is Paid'],
-    'InvoiceItems': ['Invoice ID', 'Service ID', 'Name', 'Description', 'Rate', 'Quantity', 'Amount'],
-    'Receipts': ['Receipt ID', 'Invoice ID', 'Date', 'Amount', 'Payment Mode', 'Client ID'] 
-  };
-
-  for (let sheetName in schemas) {
-    let sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-      sheet.appendRow(schemas[sheetName]);
-      sheet.getRange(1, 1, 1, schemas[sheetName].length).setFontWeight('bold');
-      if (sheetName === 'Company') {
-        sheet.appendRow(['Logo URL', 'https://via.placeholder.com/200x60/4f46e5/ffffff?text=Your+Logo+Here']);
-        sheet.appendRow(['Company Name', 'My Awesome Business LLC']);
-        sheet.appendRow(['Address', '123 Business Road, City, Country']);
-        sheet.appendRow(['Contact', 'billing@mybusiness.com | +1 234 567 8900']);
-        sheet.appendRow(['Terms', '1. Payment is due within 15 days.\n2. Thank you for your business!']);
-        sheet.appendRow(['UpiId', 'yourname@upi']);
-        sheet.appendRow(['UpiName', 'Your Name']);
-      }
+    .form-view-container { padding-bottom: 90px !important; }
+    
+    @keyframes viewFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
-  }
-}
-
-function deleteRecord(type, id) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (type === 'client') {
-    deleteRowById(ss.getSheetByName('Clients'), id, 0); 
-    deleteRowsByForeignId(ss.getSheetByName('Invoices'), id, 1); 
-    deleteRowsByForeignId(ss.getSheetByName('Receipts'), id, 5); 
-  } else if (type === 'invoice') {
-    deleteRowById(ss.getSheetByName('Invoices'), id, 0);
-    deleteRowsByForeignId(ss.getSheetByName('InvoiceItems'), id, 0);
-    deleteRowsByForeignId(ss.getSheetByName('Receipts'), id, 1); 
-  } else if (type === 'service') {
-    deleteRowById(ss.getSheetByName('Services'), id, 0);
-  } else if (type === 'receipt') {
-    const recSheet = ss.getSheetByName('Receipts');
-    let invIdsToRecalc = new Set();
-    const data = recSheet.getDataRange().getValues();
-    for(let i = data.length - 1; i >= 1; i--) {
-        if(data[i][0] === id) { 
-            if(data[i][1]) invIdsToRecalc.add(data[i][1]); 
-            recSheet.deleteRow(i + 1); 
-        }
+    .app-view.active-view {
+      animation: viewFadeIn 0.25s ease-out forwards;
     }
-    invIdsToRecalc.forEach(invId => recalculateInvoiceStatus(ss, invId));
-  }
-  SpreadsheetApp.flush(); return { success: true };
-}
 
-function deleteRowById(sheet, id, colIndex) {
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i >= 1; i--) { if (data[i][colIndex] === id) { sheet.deleteRow(i + 1); break; } }
-}
-
-function deleteRowsByForeignId(sheet, id, colIndex) {
-  if (!sheet) return;
-  const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i >= 1; i--) { if (data[i][colIndex] === id) { sheet.deleteRow(i + 1); } }
-}
-
-function addService(id, name, desc, rate) {
-  SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Services').appendRow([id, name, desc, rate]);
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function addClient(id, name, contactName, email, mobile) {
-  let safeMobile = mobile ? "'" + String(mobile) : '';
-  SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clients').appendRow([id, name, contactName, email, safeMobile]);
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function updateClient(id, name, contactName, email, mobile) {
-  let safeMobile = mobile ? "'" + String(mobile) : '';
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clients');
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === id) { sheet.getRange(i + 1, 2, 1, 4).setValues([[name, contactName, email, safeMobile]]); break; }
-  }
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function updateService(id, name, desc, rate) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Services');
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === id) { sheet.getRange(i + 1, 2, 1, 3).setValues([[name, desc, rate]]); break; }
-  }
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function addInvoice(invData, itemsData, receiptData) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const invId = invData.id; 
-  ss.getSheetByName('Invoices').appendRow([invId, invData.clientId, invData.clientName, invData.date, invData.dueDate, invData.invNum, invData.totalAmount, invData.roundOff, invData.discount, invData.netAmount, false]);
-  
-  const itemSheet = ss.getSheetByName('InvoiceItems');
-  itemsData.forEach(item => itemSheet.appendRow([invId, item.serviceId, item.name, item.description, item.rate, item.quantity, item.amount]));
-  
-  if (receiptData && receiptData.amount && parseFloat(receiptData.amount) > 0) { 
-    addReceiptBatch([{recId: receiptData.recNum, invId: invId, date: receiptData.date, amount: receiptData.amount, mode: receiptData.mode, clientId: invData.clientId}]);
-  } else {
-    SpreadsheetApp.flush(); 
-  }
-  return { success: true };
-}
-
-function updateInvoice(invId, invData, itemsData) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const invSheet = ss.getSheetByName('Invoices');
-  const itemSheet = ss.getSheetByName('InvoiceItems');
-  
-  const invRows = invSheet.getDataRange().getValues();
-  for (let i = 1; i < invRows.length; i++) {
-    if (invRows[i][0] === invId) {
-      invSheet.getRange(i + 1, 2, 1, 9).setValues([[invData.clientId, invData.clientName, invData.date, invData.dueDate, invData.invNum, invData.totalAmount, invData.roundOff, invData.discount,invData.netAmount]]);
-      break;
+    /* Prevents position: sticky from breaking */
+    .app-view { overflow: visible !important; }
+    .sticky-header {
+      position: -webkit-sticky !important;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1020;
     }
-  }
-  
-  const itemRows = itemSheet.getDataRange().getValues();
-  for (let i = itemRows.length - 1; i >= 1; i--) { if (itemRows[i][0] === invId) { itemSheet.deleteRow(i + 1); } }
-  
-  itemsData.forEach(item => itemSheet.appendRow([invId, item.serviceId, item.name, item.description, item.rate, item.quantity, item.amount]));
-  SpreadsheetApp.flush(); return { success: true };
-}
 
-function addReceiptBatch(receipts) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const recSheet = ss.getSheetByName('Receipts');
-  let invIdsToRecalc = new Set();
-  
-  receipts.forEach(r => {
-     recSheet.appendRow([r.recId, r.invId, r.date, r.amount, r.mode, r.clientId || '']);
-     if (r.invId) invIdsToRecalc.add(r.invId);
-  });
-  
-  invIdsToRecalc.forEach(id => recalculateInvoiceStatus(ss, id));
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function updateReceiptBatch(oldRecId, receipts) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const recSheet = ss.getSheetByName('Receipts');
-  let invIdsToRecalc = new Set();
-  
-  const data = recSheet.getDataRange().getValues();
-  for(let i = data.length - 1; i >= 1; i--) {
-      if(data[i][0] === oldRecId) {
-          if(data[i][1]) invIdsToRecalc.add(data[i][1]);
-          recSheet.deleteRow(i + 1);
-      }
-  }
-  
-  receipts.forEach(r => {
-     recSheet.appendRow([r.recId, r.invId, r.date, r.amount, r.mode, r.clientId || '']);
-     if (r.invId) invIdsToRecalc.add(r.invId);
-  });
-  
-  invIdsToRecalc.forEach(id => recalculateInvoiceStatus(ss, id));
-  SpreadsheetApp.flush(); return { success: true };
-}
-
-function recalculateInvoiceStatus(ss, invoiceId) {
-  if (!invoiceId || invoiceId === '') return;
-  const recSheet = ss.getSheetByName('Receipts');
-  const invSheet = ss.getSheetByName('Invoices');
-  
-  let totalPaid = 0;
-  const recData = recSheet.getDataRange().getValues();
-  for (let i = 1; i < recData.length; i++) { 
-    if (recData[i][1] === invoiceId) totalPaid += parseFloat(recData[i][3]) || 0; 
-  }
-
-  const invData = invSheet.getDataRange().getValues();
-  for (let i = 1; i < invData.length; i++) {
-    if (invData[i][0] === invoiceId) {
-      invSheet.getRange(i + 1, 11).setValue(totalPaid >= (parseFloat(invData[i][9]) || 0));
-      break;
+    .clickable-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
     }
-  }
-}
-
-function getInitialData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const tz = ss.getSpreadsheetTimeZone();
-  const getRecords = (sheetName) => {
-    const sheet = ss.getSheetByName(sheetName);
-    if (!sheet) return [];
-    const data = sheet.getDataRange().getValues();
-    const displayData = sheet.getDataRange().getDisplayValues();
-    if (data.length <= 1) return [];
-    const headers = data.shift();
-    displayData.shift();
-    return data.map((row, rIndex) => {
-      let obj = {};
-      headers.forEach((h, i) => {
-        let key = String(h).trim();
-        let val = row[i];
-        if (val instanceof Date) {
-          if (key === 'Date') val = Utilities.formatDate(val, tz, "yyyy-MM-dd");
-          else val = displayData[rIndex][i];
-        }
-        obj[key] = val;
-      });
-      return obj;
-    });
-  };
-
-  const invoices = getRecords('Invoices');
-  let nextInvNum = 'INV-0001';
-  if (invoices.length > 0) {
-    const lastInv = invoices[invoices.length - 1]['Invoice Number'];
-    if (lastInv) {
-      const match = String(lastInv).match(/^(.*?)(\d+)$/);
-      if (match) nextInvNum = match[1] + (parseInt(match[2], 10) + 1).toString().padStart(match[2].length, '0');
-      else if (!isNaN(lastInv)) nextInvNum = parseInt(lastInv) + 1;
+    .clickable-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
     }
-  }
+    
+    .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
+    .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
 
-  let companyData = {};
-  getRecords('Company').forEach(r => companyData[r.Key] = r.Value);
-  return { company: companyData, clients: getRecords('Clients'), services: getRecords('Services'), invoices: invoices, invoiceItems: getRecords('InvoiceItems'), receipts: getRecords('Receipts'), nextInvoiceNumber: nextInvNum };
-}
+    /* PERFECT TABLE WRAPPER ARCHITECTURE */
+    .custom-table-wrapper {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        margin-bottom: 1.5rem;
+        overflow: hidden; 
+    }
+    .custom-table-scroll {
+        max-height: 65vh; /* Fits automatically if small, scrolls if big */
+        overflow-y: auto;
+    }
+    .custom-table-scroll table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 1;
+        box-shadow: 0 1px 0 #dee2e6; /* Clean border substitute for sticky headers */
+    }
+  </style>
+</head>
+<body>
+
+<div id="loaderOverlay" class="d-print-none">
+  <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem; border-width: 0.25em;"></div>
+  <h5 class="fw-bold" style="color: #4f46e5;" id="loaderText">Loading App...</h5>
+</div>
+
+<!-- ================= 1. DASHBOARD VIEW ================= -->
+<div id="dashboardView" class="app-view d-print-none">
+  <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
+    <div class="container-xl header-container">
+      <div class="header-top-row d-md-none">
+        <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> InvoicePro</h1>
+        <span class="badge bg-secondary sync-badge" style="font-size: 0.6rem;">Connecting...</span>
+      </div>
+      <div class="header-left d-none d-md-flex brand">
+        <i class="bi bi-layers-fill"></i> InvoicePro
+      </div>
+      <div class="header-center nav-wrapper mt-2 mt-md-0">
+        <ul class="nav nav-pills" id="appTabs" role="tablist">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overviewTab">Overview</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#invoicesTab">Invoices</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#clientsTab">Clients</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#servicesTab">Services</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#receiptsTab">Receipts</button></li>
+        </ul>
+      </div>
+      <div class="header-right d-none d-md-flex">
+        <span class="badge bg-secondary sync-badge" style="font-size: 0.7rem;">Connecting...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-xl tab-content mt-3 px-2 px-md-3">
+    <!-- OVERVIEW TAB -->
+    <div class="tab-pane fade show active" id="overviewTab">
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding <i class="bi bi-chevron-right float-end"></i></h6>
+                    <h2 class="fw-bold text-danger mb-0" id="dashTotalDue">₹0.00</h2>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Revenue This Year</h6>
+                    <h2 class="fw-bold text-success mb-0" id="dashTotalRev">₹0.00</h2>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices <i class="bi bi-chevron-right float-end"></i></h6>
+                    <h2 class="fw-bold text-warning mb-0" id="dashOverdueCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.75rem;">6-Month Revenue Trend</h6>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.75rem;">Recent Activity</h6>
+                    <div id="dashRecentActivity" style="max-height: 250px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVOICES TAB -->
+    <div class="tab-pane fade" id="invoicesTab">
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Invoices</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();"><i class="bi bi-x"></i></button>
+          </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
+        </div>
+      </div>
+      <div class="custom-table-wrapper">
+        <div class="custom-table-scroll">
+          <table class="table main-list-table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Inv #</th><th>Date</th><th>Client</th><th>Net Amt</th><th>Balance</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody id="invoiceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- CLIENTS TAB -->
+    <div class="tab-pane fade" id="clientsTab">
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Client Master</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();"><i class="bi bi-x"></i></button>
+          </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
+        </div>
+      </div>
+      <div class="custom-table-wrapper">
+        <div class="custom-table-scroll">
+          <table class="table main-list-table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Name</th><th>Contact Person</th><th>Mobile</th><th>Balance Due</th><th class="text-end">Action</th></tr></thead>
+            <tbody id="clientTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SERVICES TAB -->
+    <div class="tab-pane fade" id="servicesTab">
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Service Master</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();"><i class="bi bi-x"></i></button>
+          </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
+        </div>
+      </div>
+      <div class="custom-table-wrapper">
+        <div class="custom-table-scroll">
+          <table class="table main-list-table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Service Name</th><th>Description</th><th>Rate</th><th class="text-end">Action</th></tr></thead>
+            <tbody id="serviceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- RECEIPTS TAB -->
+    <div class="tab-pane fade" id="receiptsTab">
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Receipts</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();"><i class="bi bi-x"></i></button>
+          </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
+        </div>
+      </div>
+      <div class="custom-table-wrapper">
+        <div class="custom-table-scroll">
+          <table class="table main-list-table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Rec #</th><th>Date</th><th>Client / Invoice</th><th>Mode</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
+            <tbody id="receiptTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= UNIFIED CLIENT DASHBOARD VIEW ================= -->
+<div id="clientDashboardView" class="app-view d-none d-print-none">
+  <!-- PERFECT STICKY HEADER -->
+  <div class="sticky-header shadow-sm mb-3" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+    <div class="bg-white p-3 d-flex justify-content-between align-items-center shadow-sm">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
+        <h5 class="fw-bold mb-0 text-primary">Client Dashboard</h5>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm px-3 shadow-sm border" id="cd_editBtn" title="Edit Client"><i class="bi bi-pencil"></i></button>
+    </div>
+    
+    <div class="container-xl max-w-3xl mx-auto px-3 pt-3">
+      <div class="card border-0 shadow-sm p-3 bg-white mb-3" id="cd_clientDetails"></div>
+      
+      <div class="d-flex flex-wrap justify-content-between align-items-center pb-2 gap-2">
+        <h6 class="fw-bold mb-0 text-muted text-uppercase" style="font-size: 0.8rem;">Client Ledger</h6>
+        <div class="dropdown">
+          <button class="btn btn-outline-primary btn-sm dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown"><i class="bi bi-funnel"></i> Filter</button>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('all')">All Time</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('3m')">Last 3 Months</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('6m')">Last 6 Months</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('ty')">This Year</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('ly')">Last Year</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="document.getElementById('cd_customDates').classList.toggle('d-none')">Custom Range</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div id="cd_customDates" class="d-none flex-wrap gap-2 pb-2 w-100">
+        <div class="d-flex align-items-center gap-2 w-100">
+           <label class="small fw-bold text-muted mb-0" style="width: 40px;">From:</label>
+           <input type="date" id="cd_startDate" class="form-control form-control-sm flex-grow-1 shadow-sm" onchange="renderClientDashboard()">
+        </div>
+        <div class="d-flex align-items-center gap-2 w-100 mt-1 mt-md-0">
+           <label class="small fw-bold text-muted mb-0" style="width: 40px;">To:</label>
+           <input type="date" id="cd_endDate" class="form-control form-control-sm flex-grow-1 shadow-sm" onchange="renderClientDashboard()">
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="container-xl form-view-container max-w-3xl mx-auto px-3 pb-5">
+    <div class="custom-table-wrapper mb-5">
+      <!-- Standard table-responsive here because the whole page scrolls, not internally -->
+      <div class="table-responsive">
+        <table class="table main-list-table table-hover mb-0 align-middle">
+          <thead class="table-light"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+          <tbody id="cd_ledgerList"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg z-3">
+    <div class="p-3 d-flex gap-2 mx-auto" style="max-width: 800px;">
+        <button class="btn btn-success w-50 py-2 fw-bold" id="cd_recordReceiptBtn"><i class="bi bi-cash-stack"></i> Record Receipt</button>
+        <button class="btn btn-info text-white w-50 py-2 fw-bold" id="cd_statementBtn"><i class="bi bi-journal-text"></i> Statement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= INVOICE FORM VIEW ================= -->
+<div id="invoiceFormView" class="app-view d-none d-print-none pb-5">
+  <div class="sticky-header shadow-sm mb-4 bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="invoicePageTitle">Create Invoice</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  
+  <div class="container-xl form-view-container max-w-3xl mx-auto px-3">
+    <input type="hidden" id="inv_id"> 
+    <div class="input-group input-group-sm mb-2">
+        <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Client</span>
+        <input class="form-control border-end-0" list="clientList" id="inv_client" placeholder="Search client...">
+        <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('inv_client').value=''"><i class="bi bi-x"></i></button>
+    </div>
+    <datalist id="clientList"></datalist>
+
+    <div class="row mb-4">
+        <div class="col-sm-4 mb-2 mb-sm-0">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Date</span>
+                <input type="date" id="inv_date" class="form-control" onchange="autoSetDueDate()">
+            </div>
+        </div>
+        <div class="col-sm-4 mb-2 mb-sm-0">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Due</span>
+                <input type="date" id="inv_due_date" class="form-control">
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Inv #</span>
+                <input type="text" id="inv_num" class="form-control">
+            </div>
+        </div>
+    </div>
+    
+    <div class="card p-2 p-md-3 mb-4 shadow-sm border-0">
+      <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Service</span>
+          <input class="form-control border-end-0" list="serviceList" id="item_service" onchange="autoFillServiceDetails()" placeholder="Search...">
+          <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('item_service').value=''; document.getElementById('item_desc').value=''; document.getElementById('item_rate').value='';"><i class="bi bi-x"></i></button>
+      </div>
+      <datalist id="serviceList"></datalist>
+      <div class="input-group input-group-sm mb-2">
+          <span class="input-group-text fw-bold text-muted bg-light" style="width: 75px;">Desc</span>
+          <input type="text" id="item_desc" class="form-control">
+      </div>
+      <div class="row mb-2">
+          <div class="col-6 pe-1">
+              <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Qty</span>
+                  <input type="number" id="item_qty" class="form-control" value="1">
+              </div>
+          </div>
+          <div class="col-6 ps-1">
+              <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold text-muted bg-light" style="width: 50px;">Rate</span>
+                  <input type="number" id="item_rate" class="form-control">
+              </div>
+          </div>
+      </div>
+      <button class="btn btn-dark btn-sm w-100 py-2 mt-1" onclick="addItem()"><i class="bi bi-plus-lg"></i> Add Item</button>
+      
+      <div class="table-responsive mt-3">
+        <table class="table table-sm border-top align-middle mb-0">
+          <thead class="table-light"><tr><th>Service Details</th><th>Rate</th><th>Qty</th><th class="text-end">Amount</th><th></th></tr></thead>
+          <tbody id="itemList"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row justify-content-end border-bottom pb-4 mb-4">
+        <div class="col-12 col-md-6">
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Total</span>
+                <input type="number" id="inv_total" class="form-control bg-white text-end" readonly>
+            </div>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Discount</span>
+                <input type="number" id="inv_disc" class="form-control text-end" value="0" oninput="calculateNet()">
+            </div>
+            <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text fw-bold text-muted bg-light w-50 justify-content-end">Round Off</span>
+                <input type="number" id="inv_round" class="form-control text-end" value="0" oninput="calculateNet()">
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-primary bg-light w-50 justify-content-end">Net Amount</span>
+                <input type="number" id="inv_net" class="form-control fw-bold bg-white text-primary text-end" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div id="initialReceiptBlock">
+      <h6 class="fw-bold mb-3"><i class="bi bi-wallet2"></i> Record Initial Payment</h6>
+      <div class="row">
+         <div class="col-6 mb-3"><input type="number" id="inv_rec_amount" class="form-control" placeholder="Amount Received"></div>
+         <div class="col-6 mb-3">
+           <select id="inv_rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select>
+         </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg d-md-none z-3 p-3">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveInvoice()"><i class="bi bi-check-lg"></i> Save Invoice</button>
+  </div>
+</div>
+
+<!-- ================= CLIENT FORM VIEW ================= -->
+<div id="clientFormView" class="app-view d-none d-print-none pb-5">
+  <div class="sticky-header shadow-sm mb-4 bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="clientModalTitle">Add Client</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="c_id">
+      <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+              <label class="form-label text-muted small fw-bold mb-0">Client Name *</label>
+              <button type="button" class="btn btn-outline-primary btn-sm d-none py-0 px-2" id="btnImportContact" onclick="importContact()" style="font-size:0.75rem;"><i class="bi bi-person-lines-fill"></i> Import</button>
+          </div>
+          <input type="text" id="c_name" class="form-control">
+      </div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div>
+      <div class="row">
+         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div>
+         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control" placeholder="E.g. 9876543210"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg d-md-none z-3 p-3">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveClient()"><i class="bi bi-check-lg"></i> Save Client</button>
+  </div>
+</div>
+
+<!-- ================= SERVICE FORM VIEW ================= -->
+<div id="serviceFormView" class="app-view d-none d-print-none pb-5">
+  <div class="sticky-header shadow-sm mb-4 bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="serviceModalTitle">Add Service</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveService()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="s_id">
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Service Name *</label><input type="text" id="s_name" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Description</label><input type="text" id="s_desc" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Default Rate *</label><input type="number" id="s_rate" class="form-control"></div>
+    </div>
+  </div>
+  
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg d-md-none z-3 p-3">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveService()"><i class="bi bi-check-lg"></i> Save Service</button>
+  </div>
+</div>
+
+<!-- ================= RECEIPT FORM VIEW ================= -->
+<div id="receiptFormView" class="app-view d-none d-print-none pb-5">
+  <div class="sticky-header shadow-sm mb-4 bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary" id="receiptModalTitle">Record Receipt</h5>
+    </div>
+    <button class="btn btn-primary btn-sm px-4 d-none d-md-block" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save</button>
+  </div>
+  <div class="container-xl form-view-container max-w-xl mx-auto px-3">
+    <div class="card p-4 shadow-sm border-0">
+      <input type="hidden" id="r_id">
+      <input type="hidden" id="rec_client_id">
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Receipt Number</label><input type="text" id="rec_num" class="form-control"></div>
+      <div class="mb-3">
+          <label class="form-label text-muted small fw-bold">Client *</label>
+          <div class="input-group">
+             <input class="form-control border-end-0" list="receiptClientList" id="rec_client_input" onchange="filterInvoicesForReceipt()" placeholder="Search client...">
+             <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" id="rec_client_clear" onclick="document.getElementById('rec_client_input').value=''; filterInvoicesForReceipt();"><i class="bi bi-x"></i></button>
+          </div>
+          <datalist id="receiptClientList"></datalist>
+      </div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Link Invoice (Optional)</label><select id="rec_invoice" class="form-select"><option value="">Unlinked (Advance Payment)</option></select></div>
+      <div class="row mb-3">
+          <div class="col-6"><label class="form-label text-muted small fw-bold">Date</label><input type="date" id="rec_date" class="form-control"></div>
+          <div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div>
+      </div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div>
+    </div>
+  </div>
+  
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top shadow-lg d-md-none z-3 p-3">
+    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="saveReceipt()"><i class="bi bi-check-lg"></i> Save Receipt</button>
+  </div>
+</div>
+
+<!-- ================= PREVIEW VIEW ================= -->
+<div id="previewView" class="app-view d-none d-print-none pb-5">
+  <div class="sticky-header shadow-sm mb-4 bg-white border-bottom p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-light btn-sm" onclick="showView(lastMainView)"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="fw-bold mb-0 text-primary d-none d-sm-block" id="previewPageTitle">Preview</h5>
+    </div>
+    <button id="btnOpenFilter" class="btn btn-outline-primary btn-sm d-none ms-auto ms-md-0 me-2" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="bi bi-funnel"></i> Filter</button>
+    <div class="d-flex align-items-center gap-2 ms-auto ms-md-0">
+        <div class="btn-group shadow-sm">
+          <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(-0.1)" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
+          <button class="btn btn-white border btn-sm px-3" onclick="zoomPreview(0.1)" title="Zoom In"><i class="bi bi-plus-lg"></i></button>
+        </div>
+    </div>
+  </div>
+  
+  <div class="w-100 px-2 pb-5 mb-5 d-flex justify-content-center" id="previewBodyWrapper" style="overflow-x: auto; overflow-y: hidden;">
+     <div id="previewScaleWrapper" style="transform-origin: top left; transition: transform 0.15s ease-out;">
+         <div id="previewContent" class="bg-white shadow-sm text-start" style="width: 210mm; padding: 15mm; overflow: hidden;">
+         </div>
+     </div>
+  </div>
+
+  <div class="position-fixed bottom-0 start-0 w-100 bg-white border-top p-3 shadow-lg z-3 d-flex justify-content-between align-items-center">
+    <div>
+        <button class="btn btn-outline-danger btn-sm" id="prevBtnDelete" title="Delete"><i class="bi bi-trash"></i> <span class="d-none d-sm-inline">Delete</span></button>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" id="prevBtnEdit" title="Edit"><i class="bi bi-pencil"></i> <span class="d-none d-sm-inline">Edit</span></button>
+        <button class="btn btn-success btn-sm px-3 shadow-sm" id="prevBtnShare" onclick="sharePDF()"><i class="bi bi-whatsapp"></i> Share</button>
+        <button class="btn btn-primary btn-sm px-4 shadow-sm" onclick="printHTML(document.getElementById('previewContent').innerHTML)"><i class="bi bi-printer"></i> Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MINOR MODALS ================= -->
+<div class="modal fade" id="actionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm align-items-end"><div class="modal-content border-0"><div class="modal-header border-0 pb-1"><h6 class="modal-title fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Choose Action</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body d-flex flex-column gap-2 pt-0" id="actionModalBody"></div></div></div></div>
+
+<div class="modal fade" id="filterModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">Filter Statement</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body pb-2">
+        <select class="form-select form-select-sm mb-3" id="previewStmtFilter" onchange="handlePreviewFilterChange()"><option value="all">All Time</option><option value="3m">Last 3 Months</option><option value="6m" selected>Last 6 Months</option><option value="ty">This Year</option><option value="ly">Last Year</option><option value="custom">Custom Range</option></select>
+        <div id="previewCustomDates" class="d-none">
+          <div class="mb-2"><label class="small text-muted fw-bold">Start Date</label><input type="date" id="prevStartDate" class="form-control form-control-sm"></div>
+          <div class="mb-2"><label class="small text-muted fw-bold">End Date</label><input type="date" id="prevEndDate" class="form-control form-control-sm"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-primary btn-sm w-100 py-2" onclick="applyStatementFilter()">Apply Filter</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="alertModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-body text-center p-4">
+        <i class="bi bi-exclamation-circle text-warning display-4 mb-3 d-block"></i>
+        <h6 class="fw-bold mb-4" id="alertMessage" style="line-height: 1.5;"></h6>
+        <button type="button" class="btn btn-primary btn-sm w-100 py-2" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-body text-center p-4">
+        <i class="bi bi-exclamation-triangle text-danger display-4 mb-3 d-block"></i>
+        <h6 class="fw-bold mb-4" id="confirmMessage" style="line-height: 1.5;"></h6>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light btn-sm w-50 py-2 fw-bold" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger btn-sm w-50 py-2 fw-bold" id="confirmBtnYes">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editItemModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-primary">Edit Item</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pb-3 pt-2">
+        <input type="hidden" id="ei_index">
+        <div class="mb-2"><label class="small text-muted fw-bold">Service Name</label><input type="text" id="ei_name" class="form-control form-control-sm bg-light" readonly></div>
+        <div class="mb-2"><label class="small text-muted fw-bold">Description</label><input type="text" id="ei_desc" class="form-control form-control-sm"></div>
+        <div class="row">
+            <div class="col-6 mb-2"><label class="small text-muted fw-bold">Qty</label><input type="number" id="ei_qty" class="form-control form-control-sm"></div>
+            <div class="col-6 mb-2"><label class="small text-muted fw-bold">Rate</label><input type="number" id="ei_rate" class="form-control form-control-sm"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-primary btn-sm w-100 py-2" onclick="saveEditedItem()">Update Item</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
