@@ -373,31 +373,85 @@ function populateDropdowns() {
 
 function renderDashboard() {
     let totalDue = 0; let totalRevThisYear = 0; let overdueCount = 0;
-    const now = new Date(); const currentYear = now.getFullYear();
+    const now = new Date(); 
+    const currentYear = now.getFullYear(); 
+    const currentMonth = now.getMonth();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    
     let monthlyData = {};
     for(let i=5; i>=0; i--) {
         let d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         monthlyData[d.toLocaleString('default', { month: 'short' })] = 0;
     }
 
+    let billedThisMonth = 0;
+    let collectedThisMonth = 0;
+
+    // Loop through Invoices
     loadedData.invoices.forEach(inv => {
         if(inv.balance > 0) totalDue += inv.balance;
+        
         let invDate = new Date(inv.Date);
         if(invDate.getFullYear() === currentYear) totalRevThisYear += (parseFloat(inv['Net Amount']) || 0);
+        
+        if(invDate.getFullYear() === currentYear && invDate.getMonth() === currentMonth) {
+            billedThisMonth += (parseFloat(inv['Net Amount']) || 0);
+        }
+
         if(invDate >= sixMonthsAgo) {
             let monthName = invDate.toLocaleString('default', { month: 'short' });
             if(monthlyData[monthName] !== undefined) monthlyData[monthName] += (parseFloat(inv['Net Amount']) || 0);
         }
+        
         let dueDateStr = inv['Due Date'] || inv.dueDate; 
         if(!dueDateStr) { let d = new Date(invDate); d.setDate(d.getDate() + 15); dueDateStr = d; }
         if(inv.balance > 0 && new Date(dueDateStr) < new Date(now.setHours(0,0,0,0))) overdueCount++;
     });
 
+    // Loop through Receipts
+    let mergedAll = getMergedReceiptsList(loadedData.receipts);
+    mergedAll.forEach(r => {
+        let rDate = new Date(r.Date);
+        if(rDate.getFullYear() === currentYear && rDate.getMonth() === currentMonth) {
+            collectedThisMonth += (parseFloat(r.Amount) || 0);
+        }
+    });
+
+    // 1. Populate Standard Metrics
     document.getElementById('dashTotalDue').innerText = '₹' + totalDue.toFixed(2);
     document.getElementById('dashTotalRev').innerText = '₹' + totalRevThisYear.toFixed(2);
     document.getElementById('dashOverdueCount').innerText = overdueCount;
 
+    // 2. Populate Billed vs Collected
+    document.getElementById('dashMonthLabel').innerText = now.toLocaleString('default', { month: 'short' });
+    document.getElementById('dashBilledAmt').innerText = '₹' + billedThisMonth.toFixed(2);
+    document.getElementById('dashCollectedAmt').innerText = '₹' + collectedThisMonth.toFixed(2);
+    
+    let totalFlow = billedThisMonth + collectedThisMonth;
+    let billedPct = totalFlow > 0 ? (billedThisMonth / totalFlow) * 100 : 0;
+    let collectedPct = totalFlow > 0 ? (collectedThisMonth / totalFlow) * 100 : 0;
+    
+    document.getElementById('dashBilledBar').style.width = billedPct + '%';
+    document.getElementById('dashCollectedBar').style.width = collectedPct + '%';
+
+    // 3. Populate Top Debtors (Top 3 with balances)
+    let debtors = loadedData.clients.filter(c => c.balanceDue > 0).sort((a,b) => b.balanceDue - a.balanceDue).slice(0, 3);
+    let debtorsHtml = debtors.map(c => {
+        let mobile = c.Mobile ? String(c.Mobile).replace(/[^\d]/g, '') : '';
+        let waBtn = mobile.length >= 10 ? `<button class="btn btn-sm btn-light text-success border shadow-sm rounded-circle p-2" onclick="event.stopPropagation(); window.open('https://wa.me/${mobile}?text=${encodeURIComponent('Hello ' + c.Name + ', a gentle reminder regarding an outstanding balance of ₹' + c.balanceDue.toFixed(2) + '. Thank you!')}', '_blank')" title="Send Reminder"><i class="bi bi-whatsapp"></i></button>` : '';
+        
+        return `<div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom clickable-card" onclick="openClientDashboard('${c.ID}')">
+                    <div class="text-truncate pe-2">
+                        <div class="fw-bold text-dark text-truncate" style="font-size:0.85rem;">${c.Name}</div>
+                        <div class="text-danger fw-bold" style="font-size:0.75rem;">₹${c.balanceDue.toFixed(2)}</div>
+                    </div>
+                    <div>${waBtn}</div>
+                </div>`;
+    }).join('');
+    
+    document.getElementById('dashTopDebtors').innerHTML = debtorsHtml || '<p class="text-muted small mb-0 pt-2">No outstanding debtors. Great job!</p>';
+
+    // 4. Charts & Activity 
     const ctx = document.getElementById('revenueChart');
     if(ctx) {
         if(revenueChartInstance) revenueChartInstance.destroy(); 
@@ -410,8 +464,6 @@ function renderDashboard() {
 
     let activity = [];
     loadedData.invoices.forEach(i => activity.push({ date: new Date(i.Date), text: `Created Invoice <b>${i['Invoice Number']}</b> for ${i['Client Name']} (₹${i['Net Amount']})`, icon: 'bi-file-earmark-text', color: 'text-primary' }));
-    
-    let mergedAll = getMergedReceiptsList(loadedData.receipts);
     mergedAll.forEach(r => { let cl = loadedData.clients.find(c => String(c.ID) === String(r['Client ID'])); let cName = cl ? cl.Name : 'Unknown'; activity.push({ date: new Date(r.Date), text: `Received <b>₹${r.Amount}</b> from ${cName}`, icon: 'bi-cash-stack', color: 'text-success' }); });
     
     activity.sort((a,b) => b.date - a.date); 
