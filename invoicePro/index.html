@@ -121,26 +121,75 @@
   <div class="container-xl tab-content mt-3 px-2 px-md-3">
     <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
-        <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Total Outstanding <i class="bi bi-chevron-right float-end"></i></h6>
-                    <h2 class="fw-bold text-danger mb-0" id="dashTotalDue">₹0.00</h2>
+        
+        <!-- Row 1: O/S & Overdue (Side-by-side on mobile) -->
+        <div class="row mb-2 mb-md-3">
+            <div class="col-6 pe-2 col-md-4 mb-2 mb-md-0">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Total O/S <i class="bi bi-chevron-right float-end d-none d-md-inline"></i></h6>
+                    <h3 class="fw-bold text-danger mb-0 text-truncate" id="dashTotalDue">₹0</h3>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 h-100 bg-white">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Revenue This Year</h6>
-                    <h2 class="fw-bold text-success mb-0" id="dashTotalRev">₹0.00</h2>
+            <div class="col-6 ps-2 col-md-4 mb-2 mb-md-0">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Overdue <i class="bi bi-chevron-right float-end d-none d-md-inline"></i></h6>
+                    <h3 class="fw-bold text-warning mb-0 text-truncate" id="dashOverdueCount">0</h3>
                 </div>
             </div>
-            <div class="col-md-4 mb-3">
-                <div class="card border-0 shadow-sm p-4 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.75rem;">Overdue Invoices <i class="bi bi-chevron-right float-end"></i></h6>
-                    <h2 class="fw-bold text-warning mb-0" id="dashOverdueCount">0</h2>
+            <!-- Row 2: Revenue -->
+            <div class="col-12 col-md-4 mb-3 mt-1 mt-md-0">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase" style="font-size: 0.7rem;">Revenue This Year</h6>
+                    <h2 class="fw-bold text-success mb-0 text-truncate" id="dashTotalRev">₹0</h2>
                 </div>
             </div>
         </div>
+
+        <!-- Row 3: Actionable Analytics & Quick Actions -->
+        <div class="row mb-2">
+            <!-- Top Debtors -->
+            <div class="col-12 col-lg-4 mb-3">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.7rem;">Top Debtors</h6>
+                    <div id="dashTopDebtors"></div>
+                </div>
+            </div>
+            
+            <!-- Billed vs Collected -->
+            <div class="col-12 col-lg-4 mb-3">
+                <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                    <h6 class="text-muted fw-bold mb-3 text-uppercase" style="font-size: 0.7rem;"><span id="dashMonthLabel">This Month</span>: Flow</h6>
+                    <div class="progress mb-2 rounded-pill" style="height: 12px; background-color: #e9ecef;">
+                        <div class="progress-bar" id="dashBilledBar" style="background-color: #4f46e5; width: 0%;"></div>
+                        <div class="progress-bar bg-success" id="dashCollectedBar" style="width: 0%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small fw-bold mt-2">
+                        <div style="color: #4f46e5;">Billed: <br><span id="dashBilledAmt" class="fs-6">₹0</span></div>
+                        <div class="text-success text-end">Collected: <br><span id="dashCollectedAmt" class="fs-6">₹0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Quick Actions -->
+            <div class="col-12 col-lg-4 mb-3">
+                 <div class="card border-0 shadow-sm p-3 h-100 bg-white">
+                     <h6 class="text-muted fw-bold mb-3 text-uppercase d-none d-lg-block" style="font-size: 0.7rem;">Quick Actions</h6>
+                     <div class="d-flex justify-content-around gap-2 h-100 align-items-center">
+                        <button class="btn btn-light shadow-sm flex-fill py-3 rounded-3 text-primary fw-bold border" onclick="openAddInvoice()" style="font-size: 0.75rem;">
+                            <i class="bi bi-file-earmark-plus d-block fs-3 mb-1"></i> Invoice
+                        </button>
+                        <button class="btn btn-light shadow-sm flex-fill py-3 rounded-3 text-success fw-bold border" onclick="openAddReceipt()" style="font-size: 0.75rem;">
+                            <i class="bi bi-cash-stack d-block fs-3 mb-1"></i> Receipt
+                        </button>
+                        <button class="btn btn-light shadow-sm flex-fill py-3 rounded-3 text-dark fw-bold border" onclick="openAddClient()" style="font-size: 0.75rem;">
+                            <i class="bi bi-person-plus d-block fs-3 mb-1"></i> Client
+                        </button>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Charts & History -->
         <div class="row">
             <div class="col-lg-8 mb-4">
                 <div class="card border-0 shadow-sm p-3 h-100 bg-white">
