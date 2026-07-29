@@ -386,6 +386,7 @@ function renderDashboard() {
 
     let billedThisMonth = 0;
     let collectedThisMonth = 0;
+    let collectedThisYear = 0; // <-- NEW METRIC
 
     // Loop through Invoices
     loadedData.invoices.forEach(inv => {
@@ -412,6 +413,13 @@ function renderDashboard() {
     let mergedAll = getMergedReceiptsList(loadedData.receipts);
     mergedAll.forEach(r => {
         let rDate = new Date(r.Date);
+        
+        // Calculate Year-to-Date Receipts
+        if(rDate.getFullYear() === currentYear) {
+            collectedThisYear += (parseFloat(r.Amount) || 0);
+        }
+        
+        // Calculate This Month's Receipts
         if(rDate.getFullYear() === currentYear && rDate.getMonth() === currentMonth) {
             collectedThisMonth += (parseFloat(r.Amount) || 0);
         }
@@ -420,6 +428,7 @@ function renderDashboard() {
     // 1. Populate Standard Metrics
     document.getElementById('dashTotalDue').innerText = '₹' + totalDue.toFixed(2);
     document.getElementById('dashTotalRev').innerText = '₹' + totalRevThisYear.toFixed(2);
+    document.getElementById('dashTotalRec').innerText = '₹' + collectedThisYear.toFixed(2); // <-- POPULATE NEW CARD
     document.getElementById('dashOverdueCount').innerText = overdueCount;
 
     // 2. Populate Billed vs Collected
