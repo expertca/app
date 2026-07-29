@@ -50,14 +50,10 @@
     .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
     .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
 
-    /* PERFECT TABLE WRAPPER ARCHITECTURE */
+    /* FIXED: Seamless List Wrapper. Removed boxy borders, shadows, and hard white background */
     .custom-table-wrapper {
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        background-color: transparent; 
         margin-bottom: 1.5rem;
-        overflow: hidden; 
     }
     .custom-table-scroll {
         max-height: 65vh; /* Fits automatically if small, scrolls if big */
@@ -66,9 +62,9 @@
     .custom-table-scroll table thead th {
         position: sticky;
         top: 0;
-        background-color: #f8f9fa;
+        background-color: #fff; /* Matches body background so scrolling rows disappear cleanly under it */
         z-index: 1;
-        box-shadow: 0 1px 0 #dee2e6; /* Clean border substitute for sticky headers */
+        box-shadow: 0 1px 0 #dee2e6; /* Clean bottom border substitute for the sticky header */
     }
   </style>
 </head>
@@ -153,7 +149,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
         </div>
@@ -175,7 +171,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -197,7 +193,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -219,7 +215,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -282,7 +278,6 @@
   
   <div class="container-xl form-view-container max-w-3xl mx-auto px-3 pb-5">
     <div class="custom-table-wrapper mb-5">
-      <!-- Standard table-responsive here because the whole page scrolls, not internally -->
       <div class="table-responsive">
         <table class="table main-list-table table-hover mb-0 align-middle">
           <thead class="table-light"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
