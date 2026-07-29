@@ -9,6 +9,90 @@ let revenueChartInstance = null;
 let currentClientDashboardId = null;
 let lastMainView = 'dashboardView'; 
 
+// ================= AUTHENTICATION ENGINE =================
+let currentSession = null;
+
+window.onload = () => { 
+    const savedSession = localStorage.getItem('InvoiceProSession');
+    if (savedSession) {
+        currentSession = JSON.parse(savedSession);
+        if (new Date().getTime() > currentSession.expiry) {
+            logout();
+        } else {
+            showView('dashboardView'); 
+            loadApp(); 
+        }
+    } else {
+        showView('loginView');
+    }
+};
+
+function logout() {
+    currentSession = null;
+    localStorage.removeItem('InvoiceProSession');
+    document.getElementById('loginPin').value = '';
+    showView('loginView');
+}
+
+async function handleLogin() {
+    const pin = document.getElementById('loginPin').value;
+    if(!pin) return customAlert("Enter your PIN to unlock.");
+    
+    document.getElementById('loaderOverlay').classList.remove('d-none');
+    
+    try {
+        const response = await fetch(API_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'login', params: [pin] }) 
+        }); 
+        const result = await response.json();
+        
+        if(result.success) {
+            currentSession = result.data;
+            localStorage.setItem('InvoiceProSession', JSON.stringify(currentSession));
+            document.getElementById('loginPin').value = '';
+            showView('dashboardView');
+            loadApp();
+        } else {
+            customAlert("Invalid PIN. Access Denied.");
+            document.getElementById('loaderOverlay').classList.add('d-none');
+        }
+    } catch(e) {
+        customAlert("Network error. Could not verify PIN.");
+        document.getElementById('loaderOverlay').classList.add('d-none');
+    }
+}
+
+async function apiCall(action, ...params) { 
+    if (!currentSession) throw new Error("AuthError");
+
+    const response = await fetch(API_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+            action: action, 
+            params: params, 
+            token: currentSession.token 
+        }) 
+    }); 
+    const result = await response.json(); 
+    
+    if(!result.success) {
+        if (result.error === 'AuthError') {
+            logout();
+            throw new Error("Session expired. Please log in again.");
+        }
+        throw new Error(result.error); 
+    }
+
+    if (result.renewedToken) {
+        currentSession = result.renewedToken;
+        localStorage.setItem('InvoiceProSession', JSON.stringify(currentSession));
+    }
+
+    return result.data; 
+}
+// =========================================================
+
 function generateUID(prefix) { return prefix + '-' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
 function displayMobile(m) {
@@ -116,15 +200,6 @@ function loadLocalCache(callback) {
     if(callback) callback(hasCache); 
 }
 
-async function apiCall(action, ...params) { 
-    const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, params: params }) }); 
-    const result = await response.json(); 
-    if(!result.success) throw new Error(result.error); 
-    return result.data; 
-}
-
-window.onload = () => { showView('dashboardView'); loadApp(); };
-
 function loadApp() {
   initDB(() => {
     loadLocalCache((hasCache) => {
@@ -136,7 +211,11 @@ function loadApp() {
           saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns(); 
           updateSyncStatus('Synced'); document.getElementById('loaderOverlay').classList.add('d-none'); 
           processQueue(); 
-      }).catch(err => { updateSyncStatus('Offline'); document.getElementById('loaderOverlay').classList.add('d-none'); });
+      }).catch(err => { 
+          if(err.message === "Session expired. Please log in again.") return; 
+          updateSyncStatus('Offline'); 
+          document.getElementById('loaderOverlay').classList.add('d-none'); 
+      });
     });
   });
   if ('contacts' in navigator && 'ContactsManager' in window) {
@@ -145,12 +224,49 @@ function loadApp() {
   }
 }
 
-window.addEventListener('online', () => { updateSyncStatus('Syncing...'); loadApp(); }); 
+window.addEventListener('online', () => { updateSyncStatus('Syncing...'); if(currentSession) loadApp(); }); 
 window.addEventListener('offline', () => updateSyncStatus('Offline'));
 
 function saveToQueue(action, params) { if(!db) return; try { let tx = db.transaction('syncQueue', 'readwrite'); tx.objectStore('syncQueue').add({ id: Date.now().toString(), action: action, params: params }); updateSyncStatus('Pending'); } catch(e){} }
-function processQueue() { if (!navigator.onLine || !db) return; try { let tx = db.transaction('syncQueue', 'readonly'); let req = tx.objectStore('syncQueue').getAll(); req.onsuccess = () => { let queue = req.result; if (queue.length === 0) return; updateSyncStatus('Syncing...'); let item = queue[0]; apiCall(item.action, ...item.params).then(() => { let dTx = db.transaction('syncQueue', 'readwrite'); dTx.objectStore('syncQueue').delete(item.id); dTx.oncomplete = () => processQueue(); }).catch(() => updateSyncStatus('Offline')); }; } catch(e){} }
-function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch(() => { saveToQueue(action, params); }); }
+
+function processQueue() { 
+    if (!navigator.onLine || !db || !currentSession) return; 
+    try { 
+        let tx = db.transaction('syncQueue', 'readonly'); 
+        let req = tx.objectStore('syncQueue').getAll(); 
+        req.onsuccess = () => { 
+            let queue = req.result; 
+            if (queue.length === 0) return; 
+            
+            updateSyncStatus('Syncing...'); 
+            let item = queue[0]; 
+            
+            apiCall(item.action, ...item.params).then(() => { 
+                let dTx = db.transaction('syncQueue', 'readwrite'); 
+                dTx.objectStore('syncQueue').delete(item.id); 
+                dTx.oncomplete = () => {
+                    if (queue.length === 1) {
+                        apiCall('getInitialData').then(data => { 
+                            loadedData = data || { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] }; 
+                            saveLocalCache(loadedData); 
+                            calculateBalances(); 
+                            renderTables(); 
+                            populateDropdowns(); 
+                            updateSyncStatus('Synced'); 
+                        });
+                    } else {
+                        processQueue(); 
+                    }
+                }; 
+            }).catch((e) => { 
+                if(e.message === "Session expired. Please log in again.") return; 
+                updateSyncStatus('Offline'); 
+            }); 
+        }; 
+    } catch(e){} 
+}
+
+function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch((e) => { if(e.message === "Session expired. Please log in again.") return; saveToQueue(action, params); }); }
 
 function optimisticUpdate(action, params) {
   try {
@@ -358,7 +474,7 @@ function openInvoicePreview(invId) {
   let net = parseFloat(inv['Net Amount']) || 0; let paid = inv.paidAmount || 0; let bal = inv.balance || 0;
   let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
   let items = loadedData.invoiceItems.filter(i => String(i['Invoice ID']) === String(invId)); let itemsHtml = items.map(i => `<tr><td><strong class="text-dark">${i.Name}</strong><br><span class="text-muted">${i.Description}</span></td><td>${parseFloat(i.Rate).toFixed(2)}</td><td>${i.Quantity}</td><td class="text-end fw-bold">${parseFloat(i.Amount).toFixed(2)}</td></tr>`).join('');
-  let contactHtml = client ? `${client['Contact Name'] || ''}<br>${displayMobile(client.Mobile)}<br>${client.Email || ''}` : ''; let advanceRow = ''; if (bal < 0) { bal = 0; advanceRow = `<tr class="bg-light text-success"><td><h6 class="mt-2 fw-bold mb-2">Overpaid / Advance</h6></td><td><h6 class="mt-2 fw-bold mb-2">${Math.abs(inv.balance).toFixed(2)}</h6></td></tr>`; }
+  let contactHtml = client ? `${client['Contact Name'] || ''}<br>${displayMobile(client.Mobile)}<br>${client.Email || ''}` : ''; let advanceRow = ''; if (bal < 0) { bal = 0; advanceRow = `<tr class="bg-light text-success"><td><h6 class="mt-2 fw-bold mb-2">Overpaid / Advance</h6></td><td><h6 class="mt-2 fw-bold mb-2">+${Math.abs(inv.balance).toFixed(2)}</h6></td></tr>`; }
   
   let dueDateHtml = inv['Due Date'] ? `<p class="mb-0"><span class="text-muted fw-bold me-1">Due Date:</span> <span>${inv['Due Date'].substring(0, 10)}</span></p>` : '';
 
@@ -620,7 +736,7 @@ function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID
 function saveClient() { 
     const id = document.getElementById('c_id').value || generateUID('CLI'); 
     let mobileVal = document.getElementById('c_mobile').value; 
-    mobileVal = mobileVal ? mobileVal.replace(/^'/, '') : ''; 
+    mobileVal = mobileVal ? mobileVal.replace(/[^\d]/g, '') : ''; 
     const name = document.getElementById('c_name').value.trim().toUpperCase();
     const contact = document.getElementById('c_contact').value.trim().toUpperCase();
     const email = document.getElementById('c_email').value;
