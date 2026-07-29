@@ -11,7 +11,6 @@ let lastMainView = 'dashboardView';
 
 function generateUID(prefix) { return prefix + '-' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
-// 10-Digit Mobile Stripper helper
 function displayMobile(m) {
     if(!m) return '-';
     let s = String(m).replace(/[^\d]/g, '');
@@ -302,7 +301,6 @@ function sendWhatsAppReminder(invId) {
     
     let text = `Hello ${inv['Client Name']},\n\nA gentle reminder that Invoice *${inv['Invoice Number']}* has a pending balance of *₹${inv.balance.toFixed(2)}*.\n`;
     
-    // Add UPI Link if configured in company data
     let upiId = loadedData.company['UpiId'];
     if(upiId) {
        let upiName = loadedData.company['UpiName'] || '';
@@ -364,7 +362,6 @@ function openInvoicePreview(invId) {
   
   let dueDateHtml = inv['Due Date'] ? `<p class="mb-0"><span class="text-muted fw-bold me-1">Due Date:</span> <span>${inv['Due Date'].substring(0, 10)}</span></p>` : '';
 
-  // Append UPI logic cleanly into the footer block
   let upiId = loadedData.company['UpiId'];
   let upiHtml = '';
   if(upiId) {
@@ -411,7 +408,7 @@ function openClientDashboard(clientId) {
     
     document.getElementById('cd_customDates').classList.add('d-none');
     document.getElementById('cd_customDates').classList.remove('d-flex');
-    cdCurrentFilter = '6m'; // Defaults to 6m
+    cdCurrentFilter = '6m'; 
     
     renderClientDashboard();
     showView('clientDashboardView');
@@ -563,7 +560,7 @@ function renderTables() {
         }
         return i['Invoice Number'].toLowerCase().includes(searchInv) || i['Client Name'].toLowerCase().includes(searchInv);
     })
-    .sort((a,b) => new Date(b.Date) - new Date(a.Date) || b['Invoice Number'].localeCompare(a['Invoice Number'])); // Array Sort Newest First
+    .sort((a,b) => new Date(b.Date) - new Date(a.Date) || b['Invoice Number'].localeCompare(a['Invoice Number'])); 
   
   document.getElementById('invoiceTableBody').innerHTML = filteredInvoices.map(i => {
     let isOverdue = false; let dueDateStr = i['Due Date'] || i.dueDate; 
@@ -604,7 +601,6 @@ function renderTables() {
   const searchRc = document.getElementById('searchReceipts')?.value.toLowerCase() || '';
   let mergedAll = getMergedReceiptsList(loadedData.receipts);
   
-  // Array Sort Newest First for Receipts Tab
   const filteredReceipts = mergedAll
     .filter(r => String(r['Receipt ID']).toLowerCase().includes(searchRc))
     .sort((a,b) => new Date(b.Date) - new Date(a.Date) || b['Receipt ID'].localeCompare(a['Receipt ID']));
@@ -621,7 +617,6 @@ function renderTables() {
 function openAddClient() { ['c_id','c_name','c_contact','c_email','c_mobile'].forEach(id => document.getElementById(id).value = ''); document.getElementById('clientModalTitle').innerText = 'Add Client'; showView('clientFormView'); }
 function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID) === String(id)); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile ? String(c.Mobile).replace(/^'/, '') : ''; document.getElementById('clientModalTitle').innerText = 'Edit Client'; showView('clientFormView'); }
 
-// UPPERCASE applied directly before save
 function saveClient() { 
     const id = document.getElementById('c_id').value || generateUID('CLI'); 
     let mobileVal = document.getElementById('c_mobile').value; 
@@ -638,7 +633,6 @@ function saveClient() {
 function openAddService() { ['s_id','s_name','s_desc','s_rate'].forEach(id => document.getElementById(id).value = ''); document.getElementById('serviceModalTitle').innerText = 'Add Service'; showView('serviceFormView'); }
 function openEditService(id) { const s = loadedData.services.find(x => String(x.ID) === String(id)); document.getElementById('s_id').value = s.ID; document.getElementById('s_name').value = s.Name; document.getElementById('s_desc').value = s.Description; document.getElementById('s_rate').value = s.Rate; document.getElementById('serviceModalTitle').innerText = 'Edit Service'; showView('serviceFormView'); }
 
-// UPPERCASE applied directly before save
 function saveService() { 
     const id = document.getElementById('s_id').value || generateUID('SRV'); 
     const name = document.getElementById('s_name').value.trim().toUpperCase();
