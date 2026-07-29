@@ -357,9 +357,18 @@ function calculateBalances() {
 }
 
 function populateDropdowns() {
-  let cList = document.getElementById('clientList'); if(cList) { cList.innerHTML = ''; loadedData.clients.forEach(c => cList.innerHTML += `<option value="${c.Name}">`); }
-  let sList = document.getElementById('serviceList'); if(sList) { sList.innerHTML = ''; loadedData.services.forEach(s => sList.innerHTML += `<option value="${s.Name}">`); }
-  let rList = document.getElementById('receiptClientList'); if(rList) { rList.innerHTML = ''; loadedData.clients.forEach(c => rList.innerHTML += `<option value="${c.Name}">`); }
+  // Sort copies of the arrays A-Z alphabetically for the dropdown menus
+  let sortedClients = [...loadedData.clients].sort((a, b) => a.Name.localeCompare(b.Name));
+  let sortedServices = [...loadedData.services].sort((a, b) => a.Name.localeCompare(b.Name));
+
+  let cList = document.getElementById('clientList'); 
+  if(cList) { cList.innerHTML = ''; sortedClients.forEach(c => cList.innerHTML += `<option value="${c.Name}">`); }
+  
+  let sList = document.getElementById('serviceList'); 
+  if(sList) { sList.innerHTML = ''; sortedServices.forEach(s => sList.innerHTML += `<option value="${s.Name}">`); }
+  
+  let rList = document.getElementById('receiptClientList'); 
+  if(rList) { rList.innerHTML = ''; sortedClients.forEach(c => rList.innerHTML += `<option value="${c.Name}">`); }
 }
 
 function renderDashboard() {
@@ -691,10 +700,12 @@ function renderTables() {
   }).join('') || '<tr><td colspan="7" class="text-center text-muted py-4">No invoices found.</td></tr>';
 
   const searchCl = document.getElementById('searchClients')?.value.toLowerCase() || '';
-  const filteredClients = loadedData.clients.filter(c => {
+  const filteredClients = loadedData.clients
+    .filter(c => {
       if (searchCl === ':outstanding') return c.balanceDue > 0;
       return c.Name.toLowerCase().includes(searchCl) || (c.Mobile && String(c.Mobile).includes(searchCl));
-  });
+    })
+    .sort((a, b) => a.Name.localeCompare(b.Name)); // <-- Added A-Z Sort
   
   document.getElementById('clientTableBody').innerHTML = filteredClients.map(c => {
     let isOverpaid = c.balanceDue < 0;
@@ -710,7 +721,10 @@ function renderTables() {
   }).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No clients found.</td></tr>';
 
   const searchSr = document.getElementById('searchServices')?.value.toLowerCase() || '';
-  const filteredServices = loadedData.services.filter(s => s.Name.toLowerCase().includes(searchSr));
+  const filteredServices = loadedData.services
+    .filter(s => s.Name.toLowerCase().includes(searchSr))
+    .sort((a, b) => a.Name.localeCompare(b.Name)); // <-- Added A-Z Sort
+
   document.getElementById('serviceTableBody').innerHTML = filteredServices.map(s => 
     `<tr onclick="if(window.innerWidth < 768) showActionModal('service', '${s.ID}')"><td class="d-none d-md-table-cell fw-medium">${s.Name}</td><td class="d-none d-md-table-cell text-muted">${s.Description || '-'}</td><td class="d-none d-md-table-cell fw-medium">${(parseFloat(s.Rate)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1" onclick="event.stopPropagation(); openEditService('${s.ID}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-light text-danger" onclick="event.stopPropagation(); confirmDelete('service', '${s.ID}')"><i class="bi bi-trash"></i></button></td><td class="d-md-none p-3 d-flex justify-content-between align-items-center"><div><div class="fw-bold mb-1">${s.Name}</div><div class="small text-muted">Rate: ${parseFloat(s.Rate).toFixed(2)}</div></div></td></tr>`
   ).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No services found.</td></tr>';
