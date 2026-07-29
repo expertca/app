@@ -30,7 +30,10 @@ window.onload = () => {
 function logout() {
     currentSession = null;
     localStorage.removeItem('InvoiceProSession');
-    document.getElementById('loginPin').value = '';
+    const pinInput = document.getElementById('loginPin');
+    if(pinInput) pinInput.value = '';
+    const loader = document.getElementById('loaderOverlay');
+    if(loader) loader.classList.add('d-none');
     showView('loginView');
 }
 
@@ -41,10 +44,7 @@ async function handleLogin() {
     document.getElementById('loaderOverlay').classList.remove('d-none');
     
     try {
-        const response = await fetch(API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'login', params: [pin] }) 
-        }); 
+        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'login', params: [pin] }) }); 
         const result = await response.json();
         
         if(result.success) {
@@ -64,16 +64,12 @@ async function handleLogin() {
 }
 
 async function apiCall(action, ...params) { 
-    if (!currentSession) throw new Error("AuthError");
+    if (!currentSession) {
+        logout();
+        throw new Error("Session expired. Please log in again.");
+    }
 
-    const response = await fetch(API_URL, { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-            action: action, 
-            params: params, 
-            token: currentSession.token 
-        }) 
-    }); 
+    const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: action, params: params, token: currentSession.token }) }); 
     const result = await response.json(); 
     
     if(!result.success) {
@@ -88,12 +84,15 @@ async function apiCall(action, ...params) {
         currentSession = result.renewedToken;
         localStorage.setItem('InvoiceProSession', JSON.stringify(currentSession));
     }
-
     return result.data; 
 }
 // =========================================================
 
-function generateUID(prefix) { return prefix + '-' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
+function generateUID(prefix) { 
+    const timestamp = Date.now().toString(36).toUpperCase(); 
+    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase(); 
+    return prefix + '-' + timestamp + '-' + randomStr; 
+}
 
 function displayMobile(m) {
     if(!m) return '-';
@@ -248,11 +247,7 @@ function processQueue() {
                     if (queue.length === 1) {
                         apiCall('getInitialData').then(data => { 
                             loadedData = data || { company: {}, clients: [], services: [], invoices: [], receipts: [], invoiceItems: [] }; 
-                            saveLocalCache(loadedData); 
-                            calculateBalances(); 
-                            renderTables(); 
-                            populateDropdowns(); 
-                            updateSyncStatus('Synced'); 
+                            saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns(); updateSyncStatus('Synced'); 
                         });
                     } else {
                         processQueue(); 
@@ -731,7 +726,7 @@ function renderTables() {
 }
 
 function openAddClient() { ['c_id','c_name','c_contact','c_email','c_mobile'].forEach(id => document.getElementById(id).value = ''); document.getElementById('clientModalTitle').innerText = 'Add Client'; showView('clientFormView'); }
-function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID) === String(id)); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile ? String(c.Mobile).replace(/^'/, '') : ''; document.getElementById('clientModalTitle').innerText = 'Edit Client'; showView('clientFormView'); }
+function openEditClient(id) { const c = loadedData.clients.find(x => String(x.ID) === String(id)); document.getElementById('c_id').value = c.ID; document.getElementById('c_name').value = c.Name; document.getElementById('c_contact').value = c['Contact Name']; document.getElementById('c_email').value = c.Email; document.getElementById('c_mobile').value = c.Mobile ? String(c.Mobile).replace(/[^\d]/g, '') : ''; document.getElementById('clientModalTitle').innerText = 'Edit Client'; showView('clientFormView'); }
 
 function saveClient() { 
     const id = document.getElementById('c_id').value || generateUID('CLI'); 
@@ -907,7 +902,11 @@ function saveReceipt() {
     const rNum = document.getElementById('rec_num').value; 
     const clientId = document.getElementById('rec_client_id').value; 
     const startingInvId = document.getElementById('rec_invoice').value; 
-    let amountLeft = parseFloat(document.getElementById('rec_amount').value) || 0; 
+    
+    // Feature Fix: Capture the exact original amount before the waterfall math reduces it to 0
+    const originalAmount = parseFloat(document.getElementById('rec_amount').value) || 0; 
+    let amountLeft = originalAmount; 
+    
     const rDate = document.getElementById('rec_date').value;
     const rMode = document.getElementById('rec_mode').value;
     
@@ -960,5 +959,36 @@ function saveReceipt() {
     if(rid) { executeSave('updateReceiptBatch', rid, splitReceipts); } 
     else { executeSave('addReceiptBatch', splitReceipts); }
     
+    // Navigates safely back to your ledger FIRST
     showView(lastMainView); 
+
+    // FEATURE: WhatsApp Receipt Confirmation Logic
+    const client = loadedData.clients.find(c => String(c.ID) === String(clientId));
+    let mobile = client ? String(client.Mobile).replace(/[^\d]/g, '') : '';
+    
+    if (mobile && mobile.length >= 10) {
+        let invRefsArray = splitReceipts.map(s => {
+            let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(s.invId));
+            return inv ? inv['Invoice Number'] : null;
+        }).filter(Boolean);
+        
+        let uniqueInvRefs = [...new Set(invRefsArray)].join(', ');
+
+        let waText = `Hello ${client.Name},\n\nWe have received your payment of *₹${originalAmount.toFixed(2)}* on ${rDate}.\nReceipt #: ${rNum}\nPayment Mode: ${rMode}`;
+        if(uniqueInvRefs) waText += `\nAgainst Invoice(s): ${uniqueInvRefs}`;
+        waText += `\n\nThank you for your business!`;
+
+        // Small timeout ensures the UI finishes animating back to the ledger before the modal pops
+        setTimeout(() => {
+            document.getElementById('waConfirmMessage').innerText = "Receipt saved successfully!\nSend confirmation via WhatsApp?";
+            const waModal = new bootstrap.Modal(document.getElementById('waConfirmModal'));
+            
+            document.getElementById('waBtnYes').onclick = () => {
+                waModal.hide();
+                window.open(`https://wa.me/${mobile}?text=${encodeURIComponent(waText)}`, '_blank');
+            };
+            
+            waModal.show();
+        }, 300);
+    }
 }
