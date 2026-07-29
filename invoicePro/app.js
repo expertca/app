@@ -280,6 +280,12 @@ function optimisticUpdate(action, params) {
       let tId = params[0].id;
       loadedData.invoices.push({ 'Invoice ID': tId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
       if(params[1]) params[1].forEach(item => { loadedData.invoiceItems.push({ 'Invoice ID': tId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount }); });
+      
+      // FIXED: Safely injects the initial receipt into the local offline cache
+      if(params[2]) {
+          let r = params[2];
+          loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': tId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId });
+      }
   }
   else if(action === 'updateClient') {
       let idx = loadedData.clients.findIndex(c => String(c.ID) === String(params[0]));
@@ -298,18 +304,18 @@ function optimisticUpdate(action, params) {
       params[2].forEach(item => { loadedData.invoiceItems.push({ 'Invoice ID': params[0], 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount }); });
   }
   else if(action === 'addReceiptBatch') {
-      params[0].forEach(r => { loadedData.receipts.push({ 'Receipt ID': r.recId, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
+      params[0].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
   }
   else if(action === 'updateReceiptBatch') {
-      loadedData.receipts = loadedData.receipts.filter(r => String(r['Receipt ID']) !== String(params[0]));
-      params[1].forEach(r => { loadedData.receipts.push({ 'Receipt ID': r.recId, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
+      loadedData.receipts = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) !== String(params[0]));
+      params[1].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
   }
   else if (action === 'deleteRecord') {
     let type = params[0]; let id = String(params[1]);
     if(type === 'client') { loadedData.clients = loadedData.clients.filter(c => String(c.ID) !== id); let invIds = loadedData.invoices.filter(i => String(i['Client ID']) === id).map(i => i['Invoice ID']); loadedData.invoices = loadedData.invoices.filter(i => String(i['Client ID']) !== id); loadedData.receipts = loadedData.receipts.filter(r => !invIds.includes(r['Invoice ID']) && String(r['Client ID']) !== id); }
     else if(type === 'invoice') { loadedData.invoices = loadedData.invoices.filter(i => String(i['Invoice ID']) !== id); loadedData.receipts = loadedData.receipts.filter(r => String(r['Invoice ID']) !== id); loadedData.invoiceItems = loadedData.invoiceItems.filter(i => String(i['Invoice ID']) !== id); }
     else if(type === 'service') { loadedData.services = loadedData.services.filter(s => String(s.ID) !== id); }
-    else if(type === 'receipt') { loadedData.receipts = loadedData.receipts.filter(r => String(r['Receipt ID']) !== id); }
+    else if(type === 'receipt') { loadedData.receipts = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) !== id); }
   }
   
   saveLocalCache(loadedData); calculateBalances(); renderTables(); populateDropdowns();
@@ -318,8 +324,8 @@ function optimisticUpdate(action, params) {
 function getMergedReceiptsList(receiptsArray) {
     let merged = {};
     receiptsArray.forEach(r => {
-        let id = r['Receipt ID'];
-        if(!merged[id]) { merged[id] = { ...r, Amount: 0, linkedInvoicesSet: new Set() }; }
+        let id = r.UID || r['Receipt ID'];
+        if(!merged[id]) { merged[id] = { ...r, Amount: 0, linkedInvoicesSet: new Set(), mergedId: id }; }
         merged[id].Amount += (parseFloat(r.Amount) || 0);
         if(r['Invoice ID']) merged[id].linkedInvoicesSet.add(r['Invoice ID']);
     });
@@ -484,8 +490,8 @@ function openInvoicePreview(invId) {
   setupPreviewPage('Invoice Preview', html, { type: 'Invoice', id: inv['Invoice Number'], clientName: inv['Client Name'] }, () => openEditInvoice(invId), () => confirmDelete('invoice', invId));
 }
 
-function openReceiptPreview(recId) {
-    let matchingRecs = loadedData.receipts.filter(r => String(r['Receipt ID']) === String(recId));
+function openReceiptPreview(mergedId) {
+    let matchingRecs = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) === mergedId);
     if (matchingRecs.length === 0) return;
     
     let totalAmt = matchingRecs.reduce((sum, r) => sum + (parseFloat(r.Amount) || 0), 0);
@@ -503,7 +509,7 @@ function openReceiptPreview(recId) {
     
     let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
     let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${firstRec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${firstRec.Date.substring(0, 10)}</span></p></div></div><div class="p-4 bg-light border border-2 border-success rounded my-5 text-center"><h4 class="text-muted mb-2">AMOUNT RECEIVED</h4><h1 class="fw-bold text-success display-4 mb-0">${totalAmt.toFixed(2)}</h1></div><table class="table table-bordered mt-4"><tbody><tr><td class="w-25 text-muted fw-bold bg-light">Received From</td><td><strong class="fs-5">${clientName}</strong></td></tr><tr><td class="text-muted fw-bold bg-light">Payment Mode</td><td>${firstRec['Payment Mode']}</td></tr><tr><td class="text-muted fw-bold bg-light">${linkedInvNums.length > 1 ? 'Linked Invoices' : 'Linked Invoice'}</td><td>${invRefsDisplay}</td></tr></tbody></table><div class="row print-footer mt-5 pt-5"><div class="col-7"></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
-    setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: firstRec['Receipt ID'], clientName: clientName }, () => openEditReceipt(recId), () => confirmDelete('receipt', recId));
+    setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: firstRec['Receipt ID'], clientName: clientName }, () => openEditReceipt(mergedId), () => confirmDelete('receipt', mergedId));
 }
 
 let cdCurrentFilter = '6m';
@@ -595,7 +601,7 @@ function renderClientDashboard() {
     mergedClientRecs.forEach(r => {
         let d = new Date(r.Date);
         combined.push({
-            type: 'receipt', dateObj: d, dateStr: r.Date.substring(0, 10), ref: r['Receipt ID'], id: r['Receipt ID'],
+            type: 'receipt', dateObj: d, dateStr: r.Date.substring(0, 10), ref: r['Receipt ID'], id: r.mergedId,
             amount: r.Amount, mode: r['Payment Mode'], invRef: r.displayInvRef
         });
     });
@@ -719,7 +725,9 @@ function renderTables() {
   document.getElementById('receiptTableBody').innerHTML = filteredReceipts.map(r => {
     let cl = loadedData.clients.find(c => String(c.ID) === String(r['Client ID']));
     let clientName = cl ? cl.Name : '-'; 
-    return `<tr onclick="openReceiptPreview('${r['Receipt ID']}')"><td class="d-none d-md-table-cell fw-bold text-secondary">${r['Receipt ID'] || '-'}</td><td class="d-none d-md-table-cell text-muted">${r.Date.substring(0, 10)}</td><td class="d-none d-md-table-cell fw-medium">${clientName} <br><small class="text-muted">${r.displayInvRef}</small></td><td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></td><td class="d-none d-md-table-cell fw-bold text-success text-end">+${(parseFloat(r.Amount)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-3"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-secondary">${r['Receipt ID'] || '-'}</span><span class="text-muted small">${r.Date.substring(0, 10)}</span></div><div class="text-wrap fw-medium small mb-2">${clientName} <span class="text-muted ms-1">(${r.displayInvRef})</span></div><div class="d-flex justify-content-between align-items-end"><div class="fw-bold text-success">+${(parseFloat(r.Amount)||0).toFixed(2)}</div><div><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></div></div></td></tr>`;
+    let displayNum = r['Receipt ID'] || '-'; 
+    
+    return `<tr onclick="openReceiptPreview('${r.mergedId}')"><td class="d-none d-md-table-cell fw-bold text-secondary">${displayNum}</td><td class="d-none d-md-table-cell text-muted">${r.Date.substring(0, 10)}</td><td class="d-none d-md-table-cell fw-medium">${clientName} <br><small class="text-muted">${r.displayInvRef}</small></td><td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></td><td class="d-none d-md-table-cell fw-bold text-success text-end">+${(parseFloat(r.Amount)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1 mb-1" title="View"><i class="bi bi-eye"></i> View</button></td><td class="d-md-none p-3"><div class="d-flex justify-content-between mb-1"><span class="fw-bold text-secondary">${displayNum}</span><span class="text-muted small">${r.Date.substring(0, 10)}</span></div><div class="text-wrap fw-medium small mb-2">${clientName} <span class="text-muted ms-1">(${r.displayInvRef})</span></div><div class="d-flex justify-content-between align-items-end"><div class="fw-bold text-success">+${(parseFloat(r.Amount)||0).toFixed(2)}</div><div><span class="badge bg-light text-dark border">${r['Payment Mode']}</span></div></div></td></tr>`;
   }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">No receipts found.</td></tr>';
 
   renderClientDashboard();
@@ -858,11 +866,11 @@ function saveInvoice() {
     if(invId) {
         executeSave('updateInvoice', targetInvId, invData, invoiceItems); 
         if (initialPaymentAmt > 0) {
-            executeSave('addReceiptBatch', [{recId: generateReceiptNum(), invId: targetInvId, date: invData.date, amount: initialPaymentAmt, mode: initialPaymentMode, clientId: client.ID}]);
+            executeSave('addReceiptBatch', [{uid: generateUID('RCT'), recNum: generateReceiptNum(), invId: targetInvId, date: invData.date, amount: initialPaymentAmt, mode: initialPaymentMode, clientId: client.ID}]);
         }
     } else {
         let receiptData = null;
-        if (initialPaymentAmt > 0) { receiptData = { date: invData.date, amount: initialPaymentAmt, mode: initialPaymentMode, recNum: generateReceiptNum(), clientId: client.ID }; }
+        if (initialPaymentAmt > 0) { receiptData = { uid: generateUID('RCT'), date: invData.date, amount: initialPaymentAmt, mode: initialPaymentMode, recNum: generateReceiptNum(), clientId: client.ID }; }
         executeSave('addInvoice', invData, invoiceItems, receiptData); 
     }
     
@@ -873,13 +881,13 @@ function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.l
 function filterInvoicesForReceipt() { let clientName = document.getElementById('rec_client_input').value.trim(); let clientObj = loadedData.clients.find(c => c.Name === clientName); let sel = document.getElementById('rec_invoice'); sel.innerHTML = '<option value="">None (Advance Payment)</option>'; document.getElementById('rec_client_id').value = clientObj ? clientObj.ID : ''; if(!clientObj) return; loadedData.invoices.filter(i => String(i['Client ID']) === String(clientObj.ID) && i.balance > 0).forEach(inv => { sel.innerHTML += `<option value="${inv['Invoice ID']}">${inv['Invoice Number']} (Bal: ${inv.balance.toFixed(2)})</option>`; }); }
 function openAddReceipt(forceInvId = null, forceClientId = null) { document.getElementById('r_id').value = ''; document.getElementById('rec_num').value = generateReceiptNum(); document.getElementById('rec_client_input').value = ''; if(forceInvId) { let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(forceInvId)); document.getElementById('rec_client_input').value = inv['Client Name']; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = forceInvId; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; } else if (forceClientId) { let cl = loadedData.clients.find(c => String(c.ID) === String(forceClientId)); document.getElementById('rec_client_input').value = cl.Name; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = false; } else { document.getElementById('rec_client_input').disabled = false; document.getElementById('rec_client_clear').disabled = false; document.getElementById('rec_invoice').disabled = false; filterInvoicesForReceipt(); } document.getElementById('rec_date').valueAsDate = new Date(); document.getElementById('rec_amount').value = ''; document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; showView('receiptFormView'); }
 
-function openEditReceipt(recId) { 
-    let matchingRecs = loadedData.receipts.filter(r => String(r['Receipt ID']) === String(recId));
+function openEditReceipt(mergedId) { 
+    let matchingRecs = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) === mergedId);
     if(matchingRecs.length === 0) return;
     let totalAmt = matchingRecs.reduce((sum, r) => sum + (parseFloat(r.Amount)||0), 0);
     let firstRec = matchingRecs[0];
     
-    document.getElementById('r_id').value = firstRec['Receipt ID']; 
+    document.getElementById('r_id').value = mergedId; 
     document.getElementById('rec_num').value = firstRec['Receipt ID']; 
     const client = loadedData.clients.find(c => String(c.ID) === String(firstRec['Client ID'])); 
     
@@ -903,7 +911,6 @@ function saveReceipt() {
     const clientId = document.getElementById('rec_client_id').value; 
     const startingInvId = document.getElementById('rec_invoice').value; 
     
-    // Feature Fix: Capture the exact original amount before the waterfall math reduces it to 0
     const originalAmount = parseFloat(document.getElementById('rec_amount').value) || 0; 
     let amountLeft = originalAmount; 
     
@@ -912,12 +919,13 @@ function saveReceipt() {
     
     if(!clientId || amountLeft <= 0 || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); 
     
+    let finalUid = rid || generateUID('RCT');
     let splitReceipts = [];
     let tempBalances = {};
     loadedData.invoices.forEach(inv => tempBalances[inv['Invoice ID']] = inv.balance);
 
     if (rid) {
-        let oldSplits = loadedData.receipts.filter(r => String(r['Receipt ID']) === String(rid));
+        let oldSplits = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) === String(rid));
         oldSplits.forEach(oldSplit => {
             if (oldSplit['Invoice ID'] && tempBalances[oldSplit['Invoice ID']] !== undefined) {
                 tempBalances[oldSplit['Invoice ID']] += (parseFloat(oldSplit.Amount) || 0);
@@ -929,7 +937,7 @@ function saveReceipt() {
         const targetInvBal = tempBalances[startingInvId] || 0;
         if (targetInvBal > 0) {
             let payAmt = Math.min(amountLeft, targetInvBal);
-            splitReceipts.push({ recId: rNum, invId: startingInvId, date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
+            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: startingInvId, date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
             amountLeft -= payAmt;
             amountLeft = parseFloat(amountLeft.toFixed(2));
             tempBalances[startingInvId] -= payAmt;
@@ -945,7 +953,7 @@ function saveReceipt() {
             if (amountLeft <= 0) break;
             let targetBal = tempBalances[nextInv['Invoice ID']];
             let payAmt = Math.min(amountLeft, targetBal);
-            splitReceipts.push({ recId: rNum, invId: nextInv['Invoice ID'], date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
+            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: nextInv['Invoice ID'], date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
             amountLeft -= payAmt;
             amountLeft = parseFloat(amountLeft.toFixed(2));
             tempBalances[nextInv['Invoice ID']] -= payAmt;
@@ -953,16 +961,14 @@ function saveReceipt() {
     }
 
     if (amountLeft > 0) {
-        splitReceipts.push({ recId: rNum, invId: '', date: rDate, amount: amountLeft, mode: rMode, clientId: clientId });
+        splitReceipts.push({ uid: finalUid, recNum: rNum, invId: '', date: rDate, amount: amountLeft, mode: rMode, clientId: clientId });
     }
 
     if(rid) { executeSave('updateReceiptBatch', rid, splitReceipts); } 
     else { executeSave('addReceiptBatch', splitReceipts); }
     
-    // Navigates safely back to your ledger FIRST
     showView(lastMainView); 
 
-    // FEATURE: WhatsApp Receipt Confirmation Logic
     const client = loadedData.clients.find(c => String(c.ID) === String(clientId));
     let mobile = client ? String(client.Mobile).replace(/[^\d]/g, '') : '';
     
@@ -978,7 +984,6 @@ function saveReceipt() {
         if(uniqueInvRefs) waText += `\nAgainst Invoice(s): ${uniqueInvRefs}`;
         waText += `\n\nThank you for your business!`;
 
-        // Small timeout ensures the UI finishes animating back to the ledger before the modal pops
         setTimeout(() => {
             document.getElementById('waConfirmMessage').innerText = "Receipt saved successfully!\nSend confirmation via WhatsApp?";
             const waModal = new bootstrap.Modal(document.getElementById('waConfirmModal'));
@@ -987,7 +992,6 @@ function saveReceipt() {
                 waModal.hide();
                 window.open(`https://wa.me/${mobile}?text=${encodeURIComponent(waText)}`, '_blank');
             };
-            
             waModal.show();
         }, 300);
     }
