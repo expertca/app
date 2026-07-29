@@ -29,7 +29,6 @@
       animation: viewFadeIn 0.25s ease-out forwards;
     }
 
-    /* Prevents position: sticky from breaking */
     .app-view { overflow: visible !important; }
     .sticky-header {
       position: -webkit-sticky !important;
@@ -50,38 +49,55 @@
     .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
     .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
 
-    /* FIXED: Seamless List Wrapper. Removed boxy borders, shadows, and hard white background */
     .custom-table-wrapper {
         background-color: transparent; 
         margin-bottom: 1.5rem;
     }
     .custom-table-scroll {
-        max-height: 65vh; /* Fits automatically if small, scrolls if big */
+        max-height: 65vh; 
         overflow-y: auto;
     }
     .custom-table-scroll table thead th {
         position: sticky;
         top: 0;
-        background-color: #fff; /* Matches body background so scrolling rows disappear cleanly under it */
+        background-color: #fff; 
         z-index: 1;
-        box-shadow: 0 1px 0 #dee2e6; /* Clean bottom border substitute for the sticky header */
+        box-shadow: 0 1px 0 #dee2e6; 
     }
   </style>
 </head>
 <body>
 
-<div id="loaderOverlay" class="d-print-none">
+<div id="loaderOverlay" class="d-print-none d-none">
   <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem; border-width: 0.25em;"></div>
   <h5 class="fw-bold" style="color: #4f46e5;" id="loaderText">Loading App...</h5>
 </div>
 
+<!-- ================= LOGIN VIEW ================= -->
+<div id="loginView" class="app-view d-flex align-items-center justify-content-center" style="min-height: 100vh; background-color: #f8fafc;">
+  <div class="card border-0 shadow-lg p-4 mx-3" style="max-width: 400px; width: 100%;">
+    <div class="text-center mb-4">
+      <div class="bg-primary text-white d-inline-flex justify-content-center align-items-center rounded-circle mb-3 shadow-sm" style="width: 60px; height: 60px;">
+          <i class="bi bi-shield-lock-fill fs-2"></i>
+      </div>
+      <h3 class="fw-bold text-dark">InvoicePro Secure</h3>
+      <p class="text-muted small">Enter your master PIN to access the ledger.</p>
+    </div>
+    <input type="password" id="loginPin" class="form-control form-control-lg mb-3 text-center" placeholder="••••••" style="letter-spacing: 0.5rem; font-size: 1.5rem;" autocomplete="current-password">
+    <button class="btn btn-primary btn-lg w-100 fw-bold" onclick="handleLogin()">Unlock System</button>
+  </div>
+</div>
+
 <!-- ================= 1. DASHBOARD VIEW ================= -->
-<div id="dashboardView" class="app-view d-print-none">
+<div id="dashboardView" class="app-view d-none d-print-none">
   <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
     <div class="container-xl header-container">
       <div class="header-top-row d-md-none">
         <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> InvoicePro</h1>
-        <span class="badge bg-secondary sync-badge" style="font-size: 0.6rem;">Connecting...</span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary sync-badge" style="font-size: 0.6rem;">Connecting...</span>
+            <button class="btn btn-sm btn-light text-danger p-1 border-0" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-right fs-5"></i></button>
+        </div>
       </div>
       <div class="header-left d-none d-md-flex brand">
         <i class="bi bi-layers-fill"></i> InvoicePro
@@ -95,8 +111,9 @@
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#receiptsTab">Receipts</button></li>
         </ul>
       </div>
-      <div class="header-right d-none d-md-flex">
+      <div class="header-right d-none d-md-flex align-items-center gap-3">
         <span class="badge bg-secondary sync-badge" style="font-size: 0.7rem;">Connecting...</span>
+        <button class="btn btn-sm btn-light text-danger border-0 px-2 py-1 shadow-sm" onclick="logout()" title="Logout"><i class="bi bi-box-arrow-right"></i> Logout</button>
       </div>
     </div>
   </div>
@@ -149,7 +166,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
         </div>
@@ -171,7 +188,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -193,7 +210,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -215,7 +232,7 @@
         <div class="d-flex gap-2 w-sm-100">
           <div class="input-group input-group-sm flex-grow-1">
             <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
-            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
           <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
@@ -234,7 +251,6 @@
 
 <!-- ================= UNIFIED CLIENT DASHBOARD VIEW ================= -->
 <div id="clientDashboardView" class="app-view d-none d-print-none">
-  <!-- PERFECT STICKY HEADER -->
   <div class="sticky-header shadow-sm mb-3" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
     <div class="bg-white p-3 d-flex justify-content-between align-items-center shadow-sm">
       <div class="d-flex align-items-center gap-3">
