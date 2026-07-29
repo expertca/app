@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Invoice Pro</title>
+  <title>InvoicePro</title>
   
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -38,7 +38,6 @@
       box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
     }
     
-    /* Clean inner border removal for clear buttons */
     .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
     .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
   </style>
@@ -55,11 +54,11 @@
   <div class="top-nav sticky-top bg-white z-3 shadow-sm pb-1">
     <div class="container-xl header-container">
       <div class="header-top-row d-md-none">
-        <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> Invoice Pro</h1>
+        <h1 class="brand mb-0"><i class="bi bi-layers-fill"></i> InvoicePro</h1>
         <span class="badge bg-secondary sync-badge" style="font-size: 0.6rem;">Connecting...</span>
       </div>
       <div class="header-left d-none d-md-flex brand">
-        <i class="bi bi-layers-fill"></i> Invoice Pro
+        <i class="bi bi-layers-fill"></i> InvoicePro
       </div>
       <div class="header-center nav-wrapper mt-2 mt-md-0">
         <ul class="nav nav-pills" id="appTabs" role="tablist">
@@ -76,7 +75,7 @@
     </div>
   </div>
 
-  <div class="container-xl tab-content mt-3">
+  <div class="container-xl tab-content mt-3 px-2 px-md-3">
     <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
         <div class="row mb-4">
@@ -119,89 +118,81 @@
 
     <!-- INVOICES TAB -->
     <div class="tab-pane fade" id="invoicesTab">
-      <div class="table-container">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h4 class="mb-0 fw-bold">Invoices</h4>
-          <div class="d-flex gap-2 w-sm-100">
-            <div class="input-group input-group-sm flex-grow-1">
-              <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
-              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
-            </div>
-            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Invoices</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchInvoices" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchInvoices').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddInvoice()"><i class="bi bi-plus-lg"></i> Create</button>
         </div>
-        <div class="table-scroll">
-          <table class="table main-list-table table-hover">
-            <thead class="d-none d-md-table-header-group"><tr><th>Inv #</th><th>Date</th><th>Client</th><th>Net Amt</th><th>Balance</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
-            <tbody id="invoiceTableBody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="table-scroll bg-white rounded shadow-sm border mb-4">
+        <table class="table main-list-table table-hover mb-0">
+          <thead class="d-none d-md-table-header-group"><tr><th>Inv #</th><th>Date</th><th>Client</th><th>Net Amt</th><th>Balance</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+          <tbody id="invoiceTableBody"></tbody>
+        </table>
       </div>
     </div>
     
     <!-- CLIENTS TAB -->
     <div class="tab-pane fade" id="clientsTab">
-      <div class="table-container">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h4 class="mb-0 fw-bold">Client Master</h4>
-          <div class="d-flex gap-2 w-sm-100">
-            <div class="input-group input-group-sm flex-grow-1">
-              <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
-              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
-            </div>
-            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Client Master</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchClients" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchClients').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddClient()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
-        <div class="table-scroll">
-          <table class="table main-list-table table-hover">
-            <thead class="d-none d-md-table-header-group"><tr><th>Name</th><th>Contact Person</th><th>Mobile</th><th>Balance Due</th><th class="text-end">Action</th></tr></thead>
-            <tbody id="clientTableBody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="table-scroll bg-white rounded shadow-sm border mb-4">
+        <table class="table main-list-table table-hover mb-0">
+          <thead class="d-none d-md-table-header-group"><tr><th>Name</th><th>Contact Person</th><th>Mobile</th><th>Balance Due</th><th class="text-end">Action</th></tr></thead>
+          <tbody id="clientTableBody"></tbody>
+        </table>
       </div>
     </div>
     
     <!-- SERVICES TAB -->
     <div class="tab-pane fade" id="servicesTab">
-      <div class="table-container">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h4 class="mb-0 fw-bold">Service Master</h4>
-          <div class="d-flex gap-2 w-sm-100">
-            <div class="input-group input-group-sm flex-grow-1">
-              <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
-              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
-            </div>
-            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Service Master</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchServices" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchServices').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddService()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
-        <div class="table-scroll">
-          <table class="table main-list-table table-hover">
-            <thead class="d-none d-md-table-header-group"><tr><th>Service Name</th><th>Description</th><th>Rate</th><th class="text-end">Action</th></tr></thead>
-            <tbody id="serviceTableBody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="table-scroll bg-white rounded shadow-sm border mb-4">
+        <table class="table main-list-table table-hover mb-0">
+          <thead class="d-none d-md-table-header-group"><tr><th>Service Name</th><th>Description</th><th>Rate</th><th class="text-end">Action</th></tr></thead>
+          <tbody id="serviceTableBody"></tbody>
+        </table>
       </div>
     </div>
     
     <!-- RECEIPTS TAB -->
     <div class="tab-pane fade" id="receiptsTab">
-      <div class="table-container">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h4 class="mb-0 fw-bold">Receipts</h4>
-          <div class="d-flex gap-2 w-sm-100">
-            <div class="input-group input-group-sm flex-grow-1">
-              <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
-              <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();" title="Clear Search"><i class="bi bi-x"></i></button>
-            </div>
-            <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
+      <div class="bg-white p-3 rounded shadow-sm mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2 border">
+        <h5 class="mb-0 fw-bold">Receipts</h5>
+        <div class="d-flex gap-2 w-sm-100">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control border-end-0" id="searchReceipts" placeholder="Search..." oninput="renderTables()">
+            <button class="btn btn-outline-secondary bg-white border-start-0 search-clear-btn" type="button" onclick="document.getElementById('searchReceipts').value=''; renderTables();"><i class="bi bi-x"></i></button>
           </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 text-nowrap" onclick="openAddReceipt()"><i class="bi bi-plus-lg"></i> Add</button>
         </div>
-        <div class="table-scroll">
-          <table class="table main-list-table table-hover">
-            <thead class="d-none d-md-table-header-group"><tr><th>Rec #</th><th>Date</th><th>Client / Invoice</th><th>Mode</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
-            <tbody id="receiptTableBody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="table-scroll bg-white rounded shadow-sm border mb-4">
+        <table class="table main-list-table table-hover mb-0">
+          <thead class="d-none d-md-table-header-group"><tr><th>Rec #</th><th>Date</th><th>Client / Invoice</th><th>Mode</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
+          <tbody id="receiptTableBody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -209,7 +200,8 @@
 
 <!-- ================= UNIFIED CLIENT DASHBOARD VIEW ================= -->
 <div id="clientDashboardView" class="app-view d-none d-print-none">
-  <div class="sticky-top z-3 shadow-sm mb-4" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+  <!-- FEATURE: Entire header and filter tools are now strictly sticky -->
+  <div class="sticky-top z-3 shadow-sm mb-3" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
     <div class="bg-white p-3 d-flex justify-content-between align-items-center shadow-sm">
       <div class="d-flex align-items-center gap-3">
         <button class="btn btn-light btn-sm" onclick="showView('dashboardView')"><i class="bi bi-arrow-left"></i></button>
@@ -217,41 +209,42 @@
       </div>
       <button class="btn btn-outline-secondary btn-sm px-3 shadow-sm border" id="cd_editBtn" title="Edit Client"><i class="bi bi-pencil"></i></button>
     </div>
-    <div class="container-xl max-w-3xl mx-auto px-3 py-3">
-      <div class="card border-0 shadow-sm p-3 bg-white" id="cd_clientDetails"></div>
+    
+    <div class="container-xl max-w-3xl mx-auto px-3 pt-3">
+      <div class="card border-0 shadow-sm p-3 bg-white mb-3" id="cd_clientDetails"></div>
+      
+      <div class="d-flex flex-wrap justify-content-between align-items-center pb-2 gap-2">
+        <h6 class="fw-bold mb-0 text-muted text-uppercase" style="font-size: 0.8rem;">Client Ledger</h6>
+        <div class="dropdown">
+          <button class="btn btn-outline-primary btn-sm dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown"><i class="bi bi-funnel"></i> Filter</button>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('all')">All Time</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('3m')">Last 3 Months</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('6m')">Last 6 Months</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('ty')">This Year</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setCdFilter('ly')">Last Year</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="document.getElementById('cd_customDates').classList.toggle('d-none')">Custom Range</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div id="cd_customDates" class="d-none flex-wrap gap-2 pb-2 w-100">
+        <div class="d-flex align-items-center gap-2 w-100">
+           <label class="small fw-bold text-muted mb-0" style="width: 40px;">From:</label>
+           <input type="date" id="cd_startDate" class="form-control form-control-sm flex-grow-1 shadow-sm" onchange="renderClientDashboard()">
+        </div>
+        <div class="d-flex align-items-center gap-2 w-100 mt-1 mt-md-0">
+           <label class="small fw-bold text-muted mb-0" style="width: 40px;">To:</label>
+           <input type="date" id="cd_endDate" class="form-control form-control-sm flex-grow-1 shadow-sm" onchange="renderClientDashboard()">
+        </div>
+      </div>
     </div>
   </div>
   
   <div class="container-xl form-view-container max-w-3xl mx-auto px-3 pb-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-      <h5 class="fw-bold mb-0">Client Ledger</h5>
-      <div class="dropdown">
-        <button class="btn btn-outline-primary btn-sm dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown"><i class="bi bi-funnel"></i> Filter</button>
-        <ul class="dropdown-menu dropdown-menu-end shadow">
-          <li><a class="dropdown-item" href="#" onclick="setCdFilter('all')">All Time</a></li>
-          <li><a class="dropdown-item" href="#" onclick="setCdFilter('3m')">Last 3 Months</a></li>
-          <li><a class="dropdown-item" href="#" onclick="setCdFilter('6m')">Last 6 Months</a></li>
-          <li><a class="dropdown-item" href="#" onclick="setCdFilter('ty')">This Year</a></li>
-          <li><a class="dropdown-item" href="#" onclick="setCdFilter('ly')">Last Year</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" onclick="document.getElementById('cd_customDates').classList.toggle('d-none')">Custom Range</a></li>
-        </ul>
-      </div>
-    </div>
-    
-    <div id="cd_customDates" class="d-none flex-wrap gap-2 mb-3 w-100 p-3 bg-light border rounded shadow-sm">
-      <div class="d-flex align-items-center gap-2 w-100">
-         <label class="small fw-bold text-muted mb-0" style="width: 40px;">From:</label>
-         <input type="date" id="cd_startDate" class="form-control form-control-sm flex-grow-1" onchange="renderClientDashboard()">
-      </div>
-      <div class="d-flex align-items-center gap-2 w-100 mt-2 mt-md-0">
-         <label class="small fw-bold text-muted mb-0" style="width: 40px;">To:</label>
-         <input type="date" id="cd_endDate" class="form-control form-control-sm flex-grow-1" onchange="renderClientDashboard()">
-      </div>
-    </div>
-    
-    <div class="table-scroll mb-5">
-      <table class="table main-list-table table-hover">
+    <div class="table-scroll mb-5 border rounded shadow-sm bg-white">
+      <table class="table main-list-table table-hover mb-0">
         <thead class="d-none d-md-table-header-group"><tr><th>Date</th><th>Type & Ref</th><th>Details</th><th>Amount</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
         <tbody id="cd_ledgerList"></tbody>
       </table>
@@ -400,7 +393,7 @@
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Contact Person</label><input type="text" id="c_contact" class="form-control"></div>
       <div class="row">
          <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Email</label><input type="email" id="c_email" class="form-control"></div>
-         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control"></div>
+         <div class="col-sm-6 mb-3"><label class="form-label text-muted small fw-bold">Mobile</label><input type="text" id="c_mobile" class="form-control" placeholder="E.g. 9876543210"></div>
       </div>
     </div>
   </div>
@@ -512,7 +505,7 @@
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">Filter Statement</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body pb-2">
-        <select class="form-select form-select-sm mb-3" id="previewStmtFilter" onchange="handlePreviewFilterChange()"><option value="all">All Time</option><option value="3m" selected>Last 3 Months</option><option value="6m">Last 6 Months</option><option value="ty">This Year</option><option value="ly">Last Year</option><option value="custom">Custom Range</option></select>
+        <select class="form-select form-select-sm mb-3" id="previewStmtFilter" onchange="handlePreviewFilterChange()"><option value="all">All Time</option><option value="3m">Last 3 Months</option><option value="6m" selected>Last 6 Months</option><option value="ty">This Year</option><option value="ly">Last Year</option><option value="custom">Custom Range</option></select>
         <div id="previewCustomDates" class="d-none">
           <div class="mb-2"><label class="small text-muted fw-bold">Start Date</label><input type="date" id="prevStartDate" class="form-control form-control-sm"></div>
           <div class="mb-2"><label class="small text-muted fw-bold">End Date</label><input type="date" id="prevEndDate" class="form-control form-control-sm"></div>
