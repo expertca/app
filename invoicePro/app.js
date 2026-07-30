@@ -304,11 +304,11 @@ function optimisticUpdate(action, params) {
       params[2].forEach(item => { loadedData.invoiceItems.push({ 'Invoice ID': params[0], 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount }); });
   }
   else if(action === 'addReceiptBatch') {
-      params[0].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
+      params[0].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId, 'Notes': r.notes }); });
   }
   else if(action === 'updateReceiptBatch') {
       loadedData.receipts = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) !== String(params[0]));
-      params[1].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId }); });
+      params[1].forEach(r => { loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': r.invId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId, 'Notes': r.notes }); });
   }
   else if (action === 'deleteRecord') {
     let type = params[0]; let id = String(params[1]);
@@ -979,7 +979,51 @@ function openEditReceipt(mergedId) {
     document.getElementById('receiptModalTitle').innerText = 'Edit Receipt'; 
     showView('receiptFormView'); 
 }
+// ================= QUICK SALE LOGIC =================
+function openQuickSale() {
+    document.getElementById('qs_amount').value = '';
+    document.getElementById('qs_notes').value = '';
+    new bootstrap.Modal(document.getElementById('quickSaleModal')).show();
+}
 
+function saveQuickSale() {
+    const amt = parseFloat(document.getElementById('qs_amount').value);
+    const mode = document.getElementById('qs_mode').value;
+    const notes = document.getElementById('qs_notes').value;
+    
+    if(!amt || amt <= 0) return customAlert("Enter a valid amount!");
+
+    // 1. Check for system client, create silently if missing
+    let walkIn = loadedData.clients.find(c => c.Name === 'Walk-In Customer');
+    if(!walkIn) {
+        walkIn = { ID: generateUID('CLI'), Name: 'Walk-In Customer' };
+        executeSave('addClient', walkIn.ID, walkIn.Name, '', '', '');
+    }
+
+    // 2. Generate Receipt Data
+    const rNum = generateReceiptNum();
+    const rDate = new Date().toISOString().substring(0, 10);
+    const rUid = generateUID('RCT');
+    
+    const recData = [{
+        uid: rUid, 
+        recNum: rNum, 
+        invId: '', // Unlinked
+        date: rDate, 
+        amount: amt, 
+        mode: mode, 
+        clientId: walkIn.ID,
+        notes: notes
+    }];
+
+    // 3. Save, Hide Modal, and Refresh UI
+    executeSave('addReceiptBatch', recData);
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('quickSaleModal'));
+    if(modal) modal.hide();
+    
+    showView(lastMainView); // Snaps back to ledger
+}
 function saveReceipt() { 
     const rid = document.getElementById('r_id').value; 
     const rNum = document.getElementById('rec_num').value; 
