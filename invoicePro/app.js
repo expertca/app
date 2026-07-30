@@ -1031,7 +1031,7 @@ function saveQuickSale() {
     if(!amt || amt <= 0) return customAlert("Enter a valid amount!");
 
     // 1. Check for system client, create silently if missing
-    let walkIn = loadedData.clients.find(c => c.Name.toLowerCase() === 'walk-in-customer');
+    let walkIn = loadedData.clients.find(c => c.Name.toLowerCase() === 'walk-in customer');
     if(!walkIn) {
         walkIn = { ID: generateUID('CLI'), Name: 'Walk-In Customer' };
         executeSave('addClient', walkIn.ID, walkIn.Name, '', '', '');
