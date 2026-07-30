@@ -15,6 +15,10 @@
   
   <link rel="stylesheet" href="style.css">
   <style>
+    body {
+    overflow-x: hidden;
+    width: 100%;
+    }
     @media (max-width: 767.98px) {
       .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
     }
@@ -122,38 +126,38 @@
     <!-- OVERVIEW TAB -->
     <div class="tab-pane fade show active" id="overviewTab">
         
-        <!-- Row 1: O/S & Overdue (Side-by-side on mobile) -->
-        <div class="row mb-2 mb-md-3">
+        <!-- Row 1: Key Metrics (2x2 on mobile, 4 in a row on desktop) -->
+        <div class="row g-2 mb-3">
             <!-- Total O/S -->
-            <div class="col-6 pe-2 col-md-3 mb-2 mb-md-0">
+            <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm p-3 h-100 bg-white clickable-card" onclick="viewOutstandingClients()">
                     <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Total O/S <i class="bi bi-chevron-right float-end d-none d-md-inline"></i></h6>
                     <h3 class="fw-bold text-danger mb-0 text-truncate" id="dashTotalDue">₹0</h3>
                 </div>
             </div>
             <!-- Overdue -->
-            <div class="col-6 ps-2 pe-md-2 col-md-3 mb-2 mb-md-0">
+            <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm p-3 h-100 bg-white clickable-card" onclick="viewOverdueInvoices()">
                     <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Overdue <i class="bi bi-chevron-right float-end d-none d-md-inline"></i></h6>
                     <h3 class="fw-bold text-warning mb-0 text-truncate" id="dashOverdueCount">0</h3>
                 </div>
             </div>
-            <!-- Revenue This Year -->
-            <div class="col-6 pe-2 ps-md-2 col-md-3 mb-2 mb-md-0 mt-1 mt-md-0">
+            <!-- Revenue YTD -->
+            <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm p-3 h-100 bg-white">
                     <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Revenue YTD</h6>
                     <h3 class="fw-bold text-success mb-0 text-truncate" id="dashTotalRev">₹0</h3>
                 </div>
             </div>
-            <!-- Receipts This Year -->
-            <div class="col-6 ps-2 col-md-3 mb-2 mb-md-0 mt-1 mt-md-0">
+            <!-- Receipts YTD -->
+            <div class="col-6 col-md-3">
                 <div class="card border-0 shadow-sm p-3 h-100 bg-white">
                     <h6 class="text-muted fw-bold mb-1 text-uppercase text-truncate" style="font-size: 0.65rem;">Receipts YTD</h6>
-                    <h3 class="fw-bold" style="color: #059669; margin-bottom: 0;" id="dashTotalRec">₹0</h3>
+                    <h3 class="fw-bold mb-0 text-truncate" style="color: #059669;" id="dashTotalRec">₹0</h3>
                 </div>
             </div>
         </div>
-
+      
         <!-- Row 3: Actionable Analytics & Quick Actions -->
         <div class="row mb-2">
             <!-- Top Debtors -->
