@@ -184,16 +184,16 @@
                  <div class="card border-0 shadow-sm p-3 h-100 bg-white">
                      <h6 class="text-muted fw-bold mb-3 text-uppercase d-none d-lg-block" style="font-size: 0.7rem;">Quick Actions</h6>
                      <div class="d-flex justify-content-between gap-2 h-100 align-items-center">
-                        <button class="btn btn-light shadow-sm flex-fill py-3 px-1 rounded-3 text-primary fw-bold border" onclick="openAddInvoice()" style="font-size: 0.7rem;">
+                        <button class="btn btn-primary shadow-sm flex-fill py-3 px-1 rounded-3 text-white fw-bold border-0" onclick="openAddInvoice()" style="font-size: 0.7rem;">
                             <i class="bi bi-file-earmark-plus d-block fs-4 mb-1"></i> Inv
                         </button>
-                        <button class="btn btn-light shadow-sm flex-fill py-3 px-1 rounded-3 text-success fw-bold border" onclick="openAddReceipt()" style="font-size: 0.7rem;">
+                        <button class="btn btn-success shadow-sm flex-fill py-3 px-1 rounded-3 text-white fw-bold border-0" onclick="openAddReceipt()" style="font-size: 0.7rem;">
                             <i class="bi bi-cash-stack d-block fs-4 mb-1"></i> Rec
                         </button>
-                        <button class="btn btn-light shadow-sm flex-fill py-3 px-1 rounded-3 text-dark fw-bold border" onclick="openAddClient()" style="font-size: 0.7rem;">
+                        <button class="btn btn-info shadow-sm flex-fill py-3 px-1 rounded-3 text-white fw-bold border-0" onclick="openAddClient()" style="font-size: 0.7rem;">
                             <i class="bi bi-person-plus d-block fs-4 mb-1"></i> Client
                         </button>
-                        <button class="btn btn-warning shadow-sm flex-fill py-3 px-1 rounded-3 text-dark fw-bold border" onclick="openQuickSale()" style="font-size: 0.7rem;">
+                        <button class="btn btn-warning shadow-sm flex-fill py-3 px-1 rounded-3 text-dark fw-bold border-0" onclick="openQuickSale()" style="font-size: 0.7rem;">
                             <i class="bi bi-lightning-charge-fill d-block fs-4 mb-1"></i> Quick
                         </button>
                     </div>
@@ -567,6 +567,7 @@
           <div class="col-6"><label class="form-label text-muted small fw-bold">Mode</label><select id="rec_mode" class="form-select"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="BankTransfer">Transfer</option><option value="Cheque">Cheque</option></select></div>
       </div>
       <div class="mb-3"><label class="form-label text-muted small fw-bold">Amount</label><input type="number" id="rec_amount" class="form-control"></div>
+      <div class="mb-3"><label class="form-label text-muted small fw-bold">Notes (Service, Client name, etc.)</label><input type="text" id="rec_notes" class="form-control"></div>
     </div>
   </div>
   
@@ -697,7 +698,7 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0">
-        <h6 class="modal-title fw-bold text-dark"><i class="bi bi-lightning-charge-fill text-warning"></i> Quick Cash Sale</h6>
+        <h6 class="modal-title fw-bold text-dark"><i class="bi bi-lightning-charge-fill text-warning"></i> Quick Receipt</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body pb-3 pt-2">
@@ -711,13 +712,13 @@
                 <select id="qs_mode" class="form-select form-select-sm"><option value="Cash">Cash</option><option value="UPI">UPI</option></select>
             </div>
             <div class="col-12 mb-2">
-                <label class="small text-muted fw-bold">Notes / Item</label>
-                <input type="text" id="qs_notes" class="form-control form-control-sm" placeholder="e.g. Sold spare cable">
+                <label class="small text-muted fw-bold">Notes</label>
+                <input type="text" id="qs_notes" class="form-control form-control-sm" placeholder="e.g. Service name, Cleint name, etc">
             </div>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-warning fw-bold w-100 py-2 shadow-sm" onclick="saveQuickSale()">Record Sale</button>
+        <button type="button" class="btn btn-warning fw-bold w-100 py-2 shadow-sm" onclick="saveQuickSale()">Record Receipt</button>
       </div>
     </div>
   </div>
