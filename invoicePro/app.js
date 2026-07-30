@@ -577,11 +577,13 @@ function openReceiptPreview(mergedId) {
     
     let invRefsDisplay = linkedInvNums.length > 0 ? linkedInvNums.join(', ') : 'None (Advance)';
     
+    // If notes exist, generate a row for them in the print preview
+    let notesRow = firstRec.Notes ? `<tr><td class="text-muted fw-bold bg-light">Notes</td><td>${firstRec.Notes}</td></tr>` : '';
+    
     let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
-    let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${firstRec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${firstRec.Date.substring(0, 10)}</span></p></div></div><div class="p-4 bg-light border border-2 border-success rounded my-5 text-center"><h4 class="text-muted mb-2">AMOUNT RECEIVED</h4><h1 class="fw-bold text-success display-4 mb-0">${totalAmt.toFixed(2)}</h1></div><table class="table table-bordered mt-4"><tbody><tr><td class="w-25 text-muted fw-bold bg-light">Received From</td><td><strong class="fs-5">${clientName}</strong></td></tr><tr><td class="text-muted fw-bold bg-light">Payment Mode</td><td>${firstRec['Payment Mode']}</td></tr><tr><td class="text-muted fw-bold bg-light">${linkedInvNums.length > 1 ? 'Linked Invoices' : 'Linked Invoice'}</td><td>${invRefsDisplay}</td></tr></tbody></table><div class="row print-footer mt-5 pt-5"><div class="col-7"></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
+    let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${firstRec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${firstRec.Date.substring(0, 10)}</span></p></div></div><div class="p-4 bg-light border border-2 border-success rounded my-5 text-center"><h4 class="text-muted mb-2">AMOUNT RECEIVED</h4><h1 class="fw-bold text-success display-4 mb-0">${totalAmt.toFixed(2)}</h1></div><table class="table table-bordered mt-4"><tbody><tr><td class="w-25 text-muted fw-bold bg-light">Received From</td><td><strong class="fs-5">${clientName}</strong></td></tr><tr><td class="text-muted fw-bold bg-light">Payment Mode</td><td>${firstRec['Payment Mode']}</td></tr><tr><td class="text-muted fw-bold bg-light">${linkedInvNums.length > 1 ? 'Linked Invoices' : 'Linked Invoice'}</td><td>${invRefsDisplay}</td></tr>${notesRow}</tbody></table><div class="row print-footer mt-5 pt-5"><div class="col-7"></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
     setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: firstRec['Receipt ID'], clientName: clientName }, () => openEditReceipt(mergedId), () => confirmDelete('receipt', mergedId));
 }
-
 let cdCurrentFilter = '6m';
 
 function openClientDashboard(clientId) {
@@ -954,8 +956,39 @@ function saveInvoice() {
 
 function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.length === 0) return "REC-0001"; let max = 0; loadedData.receipts.forEach(r => { let match = String(r['Receipt ID']).match(/(\d+)$/); if(match && parseInt(match[1]) > max) max = parseInt(match[1]); }); return "REC-" + (max + 1).toString().padStart(4, '0'); }
 function filterInvoicesForReceipt() { let clientName = document.getElementById('rec_client_input').value.trim(); let clientObj = loadedData.clients.find(c => c.Name === clientName); let sel = document.getElementById('rec_invoice'); sel.innerHTML = '<option value="">None (Advance Payment)</option>'; document.getElementById('rec_client_id').value = clientObj ? clientObj.ID : ''; if(!clientObj) return; loadedData.invoices.filter(i => String(i['Client ID']) === String(clientObj.ID) && i.balance > 0).forEach(inv => { sel.innerHTML += `<option value="${inv['Invoice ID']}">${inv['Invoice Number']} (Bal: ${inv.balance.toFixed(2)})</option>`; }); }
-function openAddReceipt(forceInvId = null, forceClientId = null) { document.getElementById('r_id').value = ''; document.getElementById('rec_num').value = generateReceiptNum(); document.getElementById('rec_client_input').value = ''; if(forceInvId) { let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(forceInvId)); document.getElementById('rec_client_input').value = inv['Client Name']; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = forceInvId; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = true; } else if (forceClientId) { let cl = loadedData.clients.find(c => String(c.ID) === String(forceClientId)); document.getElementById('rec_client_input').value = cl.Name; filterInvoicesForReceipt(); document.getElementById('rec_invoice').value = ''; document.getElementById('rec_client_input').disabled = true; document.getElementById('rec_client_clear').disabled = true; document.getElementById('rec_invoice').disabled = false; } else { document.getElementById('rec_client_input').disabled = false; document.getElementById('rec_client_clear').disabled = false; document.getElementById('rec_invoice').disabled = false; filterInvoicesForReceipt(); } document.getElementById('rec_date').valueAsDate = new Date(); document.getElementById('rec_amount').value = ''; document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; showView('receiptFormView'); }
-
+function openAddReceipt(forceInvId = null, forceClientId = null) { 
+    document.getElementById('r_id').value = ''; 
+    document.getElementById('rec_num').value = generateReceiptNum(); 
+    document.getElementById('rec_client_input').value = ''; 
+    document.getElementById('rec_notes').value = ''; // <-- Clears notes
+    
+    if(forceInvId) { 
+        let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(forceInvId)); 
+        document.getElementById('rec_client_input').value = inv['Client Name']; 
+        filterInvoicesForReceipt(); 
+        document.getElementById('rec_invoice').value = forceInvId; 
+        document.getElementById('rec_client_input').disabled = true; 
+        document.getElementById('rec_client_clear').disabled = true; 
+        document.getElementById('rec_invoice').disabled = true; 
+    } else if (forceClientId) { 
+        let cl = loadedData.clients.find(c => String(c.ID) === String(forceClientId)); 
+        document.getElementById('rec_client_input').value = cl.Name; 
+        filterInvoicesForReceipt(); 
+        document.getElementById('rec_invoice').value = ''; 
+        document.getElementById('rec_client_input').disabled = true; 
+        document.getElementById('rec_client_clear').disabled = true; 
+        document.getElementById('rec_invoice').disabled = false; 
+    } else { 
+        document.getElementById('rec_client_input').disabled = false; 
+        document.getElementById('rec_client_clear').disabled = false; 
+        document.getElementById('rec_invoice').disabled = false; 
+        filterInvoicesForReceipt(); 
+    } 
+    document.getElementById('rec_date').valueAsDate = new Date(); 
+    document.getElementById('rec_amount').value = ''; 
+    document.getElementById('receiptModalTitle').innerText = 'Record Receipt'; 
+    showView('receiptFormView'); 
+}
 function openEditReceipt(mergedId) { 
     let matchingRecs = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) === mergedId);
     if(matchingRecs.length === 0) return;
@@ -976,6 +1009,10 @@ function openEditReceipt(mergedId) {
     document.getElementById('rec_date').value = firstRec.Date.substring(0, 10); 
     document.getElementById('rec_amount').value = totalAmt; 
     document.getElementById('rec_mode').value = firstRec['Payment Mode']; 
+    
+    // --> LOAD THE EXISTING NOTES <--
+    document.getElementById('rec_notes').value = firstRec.Notes || ''; 
+    
     document.getElementById('receiptModalTitle').innerText = 'Edit Receipt'; 
     showView('receiptFormView'); 
 }
@@ -1035,6 +1072,7 @@ function saveReceipt() {
     
     const rDate = document.getElementById('rec_date').value;
     const rMode = document.getElementById('rec_mode').value;
+    const rNotes = document.getElementById('rec_notes').value; // <-- GRAB NOTES
     
     if(!clientId || amountLeft <= 0 || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); 
     
@@ -1056,7 +1094,7 @@ function saveReceipt() {
         const targetInvBal = tempBalances[startingInvId] || 0;
         if (targetInvBal > 0) {
             let payAmt = Math.min(amountLeft, targetInvBal);
-            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: startingInvId, date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
+            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: startingInvId, date: rDate, amount: payAmt, mode: rMode, clientId: clientId, notes: rNotes });
             amountLeft -= payAmt;
             amountLeft = parseFloat(amountLeft.toFixed(2));
             tempBalances[startingInvId] -= payAmt;
@@ -1072,7 +1110,7 @@ function saveReceipt() {
             if (amountLeft <= 0) break;
             let targetBal = tempBalances[nextInv['Invoice ID']];
             let payAmt = Math.min(amountLeft, targetBal);
-            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: nextInv['Invoice ID'], date: rDate, amount: payAmt, mode: rMode, clientId: clientId });
+            splitReceipts.push({ uid: finalUid, recNum: rNum, invId: nextInv['Invoice ID'], date: rDate, amount: payAmt, mode: rMode, clientId: clientId, notes: rNotes });
             amountLeft -= payAmt;
             amountLeft = parseFloat(amountLeft.toFixed(2));
             tempBalances[nextInv['Invoice ID']] -= payAmt;
@@ -1080,7 +1118,7 @@ function saveReceipt() {
     }
 
     if (amountLeft > 0) {
-        splitReceipts.push({ uid: finalUid, recNum: rNum, invId: '', date: rDate, amount: amountLeft, mode: rMode, clientId: clientId });
+        splitReceipts.push({ uid: finalUid, recNum: rNum, invId: '', date: rDate, amount: amountLeft, mode: rMode, clientId: clientId, notes: rNotes });
     }
 
     if(rid) { executeSave('updateReceiptBatch', rid, splitReceipts); } 
