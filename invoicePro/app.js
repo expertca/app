@@ -54,7 +54,8 @@ async function handleLogin() {
             showView('dashboardView');
             loadApp();
         } else {
-            customAlert("Invalid PIN. Access Denied.");
+            // Displays Lockout or Invalid PIN messages directly from server
+            customAlert(result.error || "Invalid PIN. Access Denied.");
             document.getElementById('loaderOverlay').classList.add('d-none');
         }
     } catch(e) {
@@ -281,7 +282,6 @@ function optimisticUpdate(action, params) {
       loadedData.invoices.push({ 'Invoice ID': tId, 'Client ID': params[0].clientId, 'Client Name': params[0].clientName, Date: params[0].date, 'Due Date': params[0].dueDate, 'Invoice Number': params[0].invNum, 'Total Amount': params[0].totalAmount, 'Discount': params[0].discount, 'Round Off': params[0].roundOff, 'Net Amount': params[0].netAmount }); 
       if(params[1]) params[1].forEach(item => { loadedData.invoiceItems.push({ 'Invoice ID': tId, 'Service ID': item.serviceId, 'Name': item.name, 'Description': item.description, 'Rate': item.rate, 'Quantity': item.quantity, 'Amount': item.amount }); });
       
-      // FIXED: Safely injects the initial receipt into the local offline cache
       if(params[2]) {
           let r = params[2];
           loadedData.receipts.push({ 'UID': r.uid, 'Receipt ID': r.recNum, 'Invoice ID': tId, Date: r.date, Amount: r.amount, 'Payment Mode': r.mode, 'Client ID': r.clientId });
@@ -357,7 +357,6 @@ function calculateBalances() {
 }
 
 function populateDropdowns() {
-  // Sort copies of the arrays A-Z alphabetically for the dropdown menus
   let sortedClients = [...loadedData.clients].sort((a, b) => a.Name.localeCompare(b.Name));
   let sortedServices = [...loadedData.services].sort((a, b) => a.Name.localeCompare(b.Name));
 
@@ -386,9 +385,8 @@ function renderDashboard() {
 
     let billedThisMonth = 0;
     let collectedThisMonth = 0;
-    let collectedThisYear = 0; // <-- NEW METRIC
+    let collectedThisYear = 0; 
 
-    // Loop through Invoices
     loadedData.invoices.forEach(inv => {
         if(inv.balance > 0) totalDue += inv.balance;
         
@@ -409,29 +407,22 @@ function renderDashboard() {
         if(inv.balance > 0 && new Date(dueDateStr) < new Date(now.setHours(0,0,0,0))) overdueCount++;
     });
 
-    // Loop through Receipts
     let mergedAll = getMergedReceiptsList(loadedData.receipts);
     mergedAll.forEach(r => {
         let rDate = new Date(r.Date);
-        
-        // Calculate Year-to-Date Receipts
         if(rDate.getFullYear() === currentYear) {
             collectedThisYear += (parseFloat(r.Amount) || 0);
         }
-        
-        // Calculate This Month's Receipts
         if(rDate.getFullYear() === currentYear && rDate.getMonth() === currentMonth) {
             collectedThisMonth += (parseFloat(r.Amount) || 0);
         }
     });
 
-    // 1. Populate Standard Metrics
     document.getElementById('dashTotalDue').innerText = '₹' + totalDue.toFixed(2);
     document.getElementById('dashTotalRev').innerText = '₹' + totalRevThisYear.toFixed(2);
-    document.getElementById('dashTotalRec').innerText = '₹' + collectedThisYear.toFixed(2); // <-- POPULATE NEW CARD
+    document.getElementById('dashTotalRec').innerText = '₹' + collectedThisYear.toFixed(2); 
     document.getElementById('dashOverdueCount').innerText = overdueCount;
 
-    // 2. Populate Billed vs Collected
     document.getElementById('dashMonthLabel').innerText = now.toLocaleString('default', { month: 'short' });
     document.getElementById('dashBilledAmt').innerText = '₹' + billedThisMonth.toFixed(2);
     document.getElementById('dashCollectedAmt').innerText = '₹' + collectedThisMonth.toFixed(2);
@@ -443,7 +434,6 @@ function renderDashboard() {
     document.getElementById('dashBilledBar').style.width = billedPct + '%';
     document.getElementById('dashCollectedBar').style.width = collectedPct + '%';
 
-    // 3. Populate Top Debtors (Top 3 with balances)
     let debtors = loadedData.clients.filter(c => c.balanceDue > 0).sort((a,b) => b.balanceDue - a.balanceDue).slice(0, 3);
     let debtorsHtml = debtors.map(c => {
         let mobile = c.Mobile ? String(c.Mobile).replace(/[^\d]/g, '') : '';
@@ -460,7 +450,6 @@ function renderDashboard() {
     
     document.getElementById('dashTopDebtors').innerHTML = debtorsHtml || '<p class="text-muted small mb-0 pt-2">No outstanding debtors. Great job!</p>';
 
-    // 4. Charts & Activity 
     const ctx = document.getElementById('revenueChart');
     if(ctx) {
         if(revenueChartInstance) revenueChartInstance.destroy(); 
@@ -576,14 +565,12 @@ function openReceiptPreview(mergedId) {
     }).filter(Boolean);
     
     let invRefsDisplay = linkedInvNums.length > 0 ? linkedInvNums.join(', ') : 'None (Advance)';
-    
-    // If notes exist, generate a row for them in the print preview
     let notesRow = firstRec.Notes ? `<tr><td class="text-muted fw-bold bg-light">Notes</td><td>${firstRec.Notes}</td></tr>` : '';
-    
     let logoSrc = loadedData.company['Logo URL'] || ''; let logoHtml = logoSrc ? `<img src="${logoSrc}" class="d-block mb-2" style="max-height: 55px; width: auto; object-fit: contain;">` : '';
     let html = `<div class="row mb-4 pb-3 border-bottom"><div class="col-7">${logoHtml}<h5 class="fw-bold mb-1 text-dark">${loadedData.company['Company Name'] || ''}</h5><p class="text-muted mb-0" style="white-space: pre-line; line-height: 1.4;">${loadedData.company['Address'] || ''}\n${loadedData.company['Contact'] || ''}</p></div><div class="col-5 text-end"><h2 class="fw-bold" style="color: #059669; letter-spacing: -0.5px;">RECEIPT</h2><p class="mb-1"><span class="text-muted fw-bold me-1">Receipt #:</span> <span class="fw-bold">${firstRec['Receipt ID']}</span></p><p class="mb-0"><span class="text-muted fw-bold me-1">Date:</span> <span>${firstRec.Date.substring(0, 10)}</span></p></div></div><div class="p-4 bg-light border border-2 border-success rounded my-5 text-center"><h4 class="text-muted mb-2">AMOUNT RECEIVED</h4><h1 class="fw-bold text-success display-4 mb-0">${totalAmt.toFixed(2)}</h1></div><table class="table table-bordered mt-4"><tbody><tr><td class="w-25 text-muted fw-bold bg-light">Received From</td><td><strong class="fs-5">${clientName}</strong></td></tr><tr><td class="text-muted fw-bold bg-light">Payment Mode</td><td>${firstRec['Payment Mode']}</td></tr><tr><td class="text-muted fw-bold bg-light">${linkedInvNums.length > 1 ? 'Linked Invoices' : 'Linked Invoice'}</td><td>${invRefsDisplay}</td></tr>${notesRow}</tbody></table><div class="row print-footer mt-5 pt-5"><div class="col-7"></div><div class="col-5 d-flex justify-content-end"><div class="sign-line">Authorized Signatory</div></div></div>`;
     setupPreviewPage('Receipt Preview', html, { type: 'Receipt', id: firstRec['Receipt ID'], clientName: clientName }, () => openEditReceipt(mergedId), () => confirmDelete('receipt', mergedId));
 }
+
 let cdCurrentFilter = '6m';
 
 function openClientDashboard(clientId) {
@@ -768,7 +755,7 @@ function renderTables() {
       if (searchCl === ':outstanding') return c.balanceDue > 0;
       return c.Name.toLowerCase().includes(searchCl) || (c.Mobile && String(c.Mobile).includes(searchCl));
     })
-    .sort((a, b) => a.Name.localeCompare(b.Name)); // <-- Added A-Z Sort
+    .sort((a, b) => a.Name.localeCompare(b.Name));
   
   document.getElementById('clientTableBody').innerHTML = filteredClients.map(c => {
     let isOverpaid = c.balanceDue < 0;
@@ -786,7 +773,7 @@ function renderTables() {
   const searchSr = document.getElementById('searchServices')?.value.toLowerCase() || '';
   const filteredServices = loadedData.services
     .filter(s => s.Name.toLowerCase().includes(searchSr))
-    .sort((a, b) => a.Name.localeCompare(b.Name)); // <-- Added A-Z Sort
+    .sort((a, b) => a.Name.localeCompare(b.Name));
 
   document.getElementById('serviceTableBody').innerHTML = filteredServices.map(s => 
     `<tr onclick="if(window.innerWidth < 768) showActionModal('service', '${s.ID}')"><td class="d-none d-md-table-cell fw-medium">${s.Name}</td><td class="d-none d-md-table-cell text-muted">${s.Description || '-'}</td><td class="d-none d-md-table-cell fw-medium">${(parseFloat(s.Rate)||0).toFixed(2)}</td><td class="d-none d-md-table-cell text-end text-nowrap"><button class="btn btn-sm btn-light me-1" onclick="event.stopPropagation(); openEditService('${s.ID}')"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-light text-danger" onclick="event.stopPropagation(); confirmDelete('service', '${s.ID}')"><i class="bi bi-trash"></i></button></td><td class="d-md-none p-3 d-flex justify-content-between align-items-center"><div><div class="fw-bold mb-1">${s.Name}</div><div class="small text-muted">Rate: ${parseFloat(s.Rate).toFixed(2)}</div></div></td></tr>`
@@ -948,10 +935,55 @@ function saveInvoice() {
     } else {
         let receiptData = null;
         if (initialPaymentAmt > 0) { receiptData = { uid: generateUID('RCT'), date: invData.date, amount: initialPaymentAmt, mode: initialPaymentMode, recNum: generateReceiptNum(), clientId: client.ID }; }
+        
         executeSave('addInvoice', invData, invoiceItems, receiptData); 
+        
+        // --- NEW: RETAIL POS RECONCILIATION FOR WALK-INS ONLY ---
+        if (String(client.ID) === 'SYS-WALKIN') {
+            let remainingBal = parseFloat(invData.netAmount) - initialPaymentAmt;
+            autoLinkWalkInReceipts(targetInvId, client.ID, remainingBal);
+        }
     }
     
     document.getElementById('inv_rec_amount').value = ''; showView(lastMainView); 
+}
+
+// --- HELPER FUNCTION: WALK-IN RECONCILIATION ---
+function autoLinkWalkInReceipts(invId, clientId, targetBalance) {
+    if (targetBalance <= 0) return;
+    
+    let unlinkedRecs = loadedData.receipts.filter(r => String(r['Client ID']) === String(clientId) && (!r['Invoice ID'] || r['Invoice ID'] === ''));
+    let uniqueUids = [...new Set(unlinkedRecs.map(r => r.UID || r['Receipt ID']))];
+    
+    for (let uid of uniqueUids) {
+        if (targetBalance <= 0) break; 
+        
+        let oldSplits = loadedData.receipts.filter(r => (r.UID || r['Receipt ID']) === String(uid));
+        let newSplits = [];
+        let modified = false;
+        
+        for (let s of oldSplits) {
+            let amt = parseFloat(s.Amount) || 0;
+            
+            if (!s['Invoice ID'] && targetBalance > 0) {
+                let applyAmt = Math.min(amt, targetBalance);
+                
+                newSplits.push({ uid: s.UID, recNum: s['Receipt ID'], invId: invId, date: s.Date, amount: applyAmt, mode: s['Payment Mode'], clientId: s['Client ID'], notes: s.Notes });
+                
+                targetBalance -= applyAmt;
+                amt -= applyAmt;
+                modified = true;
+            }
+            
+            if (amt > 0) {
+                newSplits.push({ uid: s.UID, recNum: s['Receipt ID'], invId: s['Invoice ID'] || '', date: s.Date, amount: amt, mode: s['Payment Mode'], clientId: s['Client ID'], notes: s.Notes });
+            }
+        }
+        
+        if (modified) {
+            executeSave('updateReceiptBatch', uid, newSplits);
+        }
+    }
 }
 
 function generateReceiptNum() { if(!loadedData.receipts || loadedData.receipts.length === 0) return "REC-0001"; let max = 0; loadedData.receipts.forEach(r => { let match = String(r['Receipt ID']).match(/(\d+)$/); if(match && parseInt(match[1]) > max) max = parseInt(match[1]); }); return "REC-" + (max + 1).toString().padStart(4, '0'); }
@@ -960,7 +992,7 @@ function openAddReceipt(forceInvId = null, forceClientId = null) {
     document.getElementById('r_id').value = ''; 
     document.getElementById('rec_num').value = generateReceiptNum(); 
     document.getElementById('rec_client_input').value = ''; 
-    document.getElementById('rec_notes').value = ''; // <-- Clears notes
+    document.getElementById('rec_notes').value = ''; 
     
     if(forceInvId) { 
         let inv = loadedData.invoices.find(i => String(i['Invoice ID']) === String(forceInvId)); 
@@ -1010,13 +1042,13 @@ function openEditReceipt(mergedId) {
     document.getElementById('rec_amount').value = totalAmt; 
     document.getElementById('rec_mode').value = firstRec['Payment Mode']; 
     
-    // --> LOAD THE EXISTING NOTES <--
     document.getElementById('rec_notes').value = firstRec.Notes || ''; 
     
     document.getElementById('receiptModalTitle').innerText = 'Edit Receipt'; 
     showView('receiptFormView'); 
 }
-// ================= QUICK SALE LOGIC =================
+
+// ================= QUICK SALE LOGIC WITH HARDCODED ID =================
 function openQuickSale() {
     document.getElementById('qs_amount').value = '';
     document.getElementById('qs_notes').value = '';
@@ -1030,14 +1062,12 @@ function saveQuickSale() {
     
     if(!amt || amt <= 0) return customAlert("Enter a valid amount!");
 
-    // 1. Check for system client, create silently if missing
-    let walkIn = loadedData.clients.find(c => c.Name.toLowerCase() === 'walk-in customer');
+    let walkIn = loadedData.clients.find(c => String(c.ID) === 'SYS-WALKIN');
     if(!walkIn) {
-        walkIn = { ID: generateUID('CLI'), Name: 'Walk-In Customer' };
+        walkIn = { ID: 'SYS-WALKIN', Name: 'Walk-In Customer' };
         executeSave('addClient', walkIn.ID, walkIn.Name, '', '', '');
     }
 
-    // 2. Generate Receipt Data
     const rNum = generateReceiptNum();
     const rDate = new Date().toISOString().substring(0, 10);
     const rUid = generateUID('RCT');
@@ -1045,7 +1075,7 @@ function saveQuickSale() {
     const recData = [{
         uid: rUid, 
         recNum: rNum, 
-        invId: '', // Unlinked
+        invId: '', 
         date: rDate, 
         amount: amt, 
         mode: mode, 
@@ -1053,14 +1083,14 @@ function saveQuickSale() {
         notes: notes
     }];
 
-    // 3. Save, Hide Modal, and Refresh UI
     executeSave('addReceiptBatch', recData);
     
     const modal = bootstrap.Modal.getInstance(document.getElementById('quickSaleModal'));
     if(modal) modal.hide();
     
-    showView(lastMainView); // Snaps back to ledger
+    showView(lastMainView); 
 }
+
 function saveReceipt() { 
     const rid = document.getElementById('r_id').value; 
     const rNum = document.getElementById('rec_num').value; 
@@ -1072,7 +1102,7 @@ function saveReceipt() {
     
     const rDate = document.getElementById('rec_date').value;
     const rMode = document.getElementById('rec_mode').value;
-    const rNotes = document.getElementById('rec_notes').value; // <-- GRAB NOTES
+    const rNotes = document.getElementById('rec_notes').value; 
     
     if(!clientId || amountLeft <= 0 || !rNum) return customAlert("Client, Amount, and Receipt Number required!"); 
     
