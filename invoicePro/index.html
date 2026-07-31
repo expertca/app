@@ -14,61 +14,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css">
-  <style>
-    body {
-    overflow-x: hidden;
-    width: 100%;
-    }
-    @media (max-width: 767.98px) {
-      .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
-    }
-    
-    .form-view-container { padding-bottom: 90px !important; }
-    
-    @keyframes viewFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .app-view.active-view {
-      animation: viewFadeIn 0.25s ease-out forwards;
-    }
-
-    .app-view { overflow: visible !important; }
-    .sticky-header {
-      position: -webkit-sticky !important;
-      position: sticky !important;
-      top: 0 !important;
-      z-index: 1020;
-    }
-
-    .clickable-card {
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer;
-    }
-    .clickable-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
-    }
-    
-    .search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
-    .search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
-
-    .custom-table-wrapper {
-        background-color: transparent; 
-        margin-bottom: 1.5rem;
-    }
-    .custom-table-scroll {
-        max-height: 65vh; 
-        overflow-y: auto;
-    }
-    .custom-table-scroll table thead th {
-        position: sticky;
-        top: 0;
-        background-color: #fff; 
-        z-index: 1;
-        box-shadow: 0 1px 0 #dee2e6; 
-    }
-  </style>
 </head>
 <body>
 
@@ -661,7 +606,6 @@
   </div>
 </div>
 
-<!-- WhatsApp Confirmation Modal -->
 <div class="modal fade" id="waConfirmModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow">
@@ -733,18 +677,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="app.js"></script>
 <!-- PWA Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then((registration) => {
-              console.log('Service Worker registered successfully with scope: ', registration.scope);
-            })
-            .catch((error) => {
-              console.log('Service Worker registration failed: ', error);
-            });
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered successfully with scope: ', registration.scope);
+        })
+        .catch((error) => {
+          console.log('Service Worker registration failed: ', error);
         });
-      }
-    </script>
+    });
+  }
+</script>
 </body>
 </html>
