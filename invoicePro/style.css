@@ -1,5 +1,5 @@
-/* All custom styles moved here for neatness in repo */
-body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+/* Custom Styles */
+body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; overflow-x: hidden; width: 100%; }
 .top-nav { background: white; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); padding: 10px 0; margin-bottom: 15px; }
 .brand { font-size: 1.25rem; font-weight: 700; color: #4f46e5; display: flex; align-items: center; gap: 6px; margin: 0; }
 .header-container { display: flex; align-items: center; justify-content: space-between; }
@@ -19,6 +19,7 @@ body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f29
   .header-left, .header-right { display: none !important; }
   .nav-pills { width: 100%; display: flex; justify-content: space-between; }
   .nav-pills .nav-link { flex: 1; text-align: center; margin: 0 2px; padding: 8px 4px; font-size: 0.8rem; }
+  .fixed-bottom-mobile { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1040; }
 }
 
 .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -53,4 +54,51 @@ body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f29
   html, body { visibility: hidden; height: 100%; overflow: hidden; margin: 0; padding: 0; }
   .app-wrapper, .modal { display: none !important; }
   #printIframe { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 99999; }
+}
+
+/* UI Layout Classes */
+.form-view-container { padding-bottom: 90px !important; }
+
+@keyframes viewFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.app-view.active-view {
+  animation: viewFadeIn 0.25s ease-out forwards;
+}
+
+.app-view { overflow: visible !important; }
+.sticky-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1020;
+}
+
+.clickable-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.clickable-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+}
+
+.search-clear-btn { border-color: #dee2e6; color: #adb5bd; }
+.search-clear-btn:hover { background-color: #f8f9fa; color: #dc3545; }
+
+.custom-table-wrapper {
+    background-color: transparent; 
+    margin-bottom: 1.5rem;
+}
+.custom-table-scroll {
+    max-height: 65vh; 
+    overflow-y: auto;
+}
+.custom-table-scroll table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #fff; 
+    z-index: 1;
+    box-shadow: 0 1px 0 #dee2e6; 
 }
