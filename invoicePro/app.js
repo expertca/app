@@ -28,6 +28,10 @@ window.onload = () => {
 };
 
 function logout() {
+    if (currentSession && navigator.onLine) {
+        // Fire a background request to destroy the token in the database
+        fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'logout', token: currentSession.token }) }).catch(e => {});
+    }
     currentSession = null;
     localStorage.removeItem('InvoiceProSession');
     const pinInput = document.getElementById('loginPin');
@@ -262,7 +266,26 @@ function processQueue() {
     } catch(e){} 
 }
 
-function executeSave(action, ...params) { optimisticUpdate(action, params); if (!navigator.onLine) { saveToQueue(action, params); return; } updateSyncStatus('Syncing...'); apiCall(action, ...params).then(() => { loadApp(); }).catch((e) => { if(e.message === "Session expired. Please log in again.") return; saveToQueue(action, params); }); }
+let activeNetworkRequests = 0; // Tracks active API calls
+
+function executeSave(action, ...params) { 
+    optimisticUpdate(action, params); 
+    if (!navigator.onLine) { saveToQueue(action, params); return; } 
+    
+    updateSyncStatus('Syncing...'); 
+    activeNetworkRequests++;
+    
+    apiCall(action, ...params).then(() => { 
+        activeNetworkRequests--;
+        // Only refresh the data if NO other saves are currently processing
+        if (activeNetworkRequests === 0) loadApp(); 
+    }).catch((e) => { 
+        activeNetworkRequests--;
+        if(e.message === "Session expired. Please log in again.") return; 
+        saveToQueue(action, params); 
+        if (activeNetworkRequests === 0) loadApp();
+    }); 
+}
 
 function optimisticUpdate(action, params) {
   try {
