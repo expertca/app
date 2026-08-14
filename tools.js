@@ -17,7 +17,13 @@ const tools = [
         html: 'invoicePro/index.html',
         icon: 'receipt_long'
     },
-{
+    {
+        name: 'Project Pro',
+        description: 'Smart Project Report',
+        html: 'ProjectPro/index.html',
+        icon: 'table_view'
+    },
+    {
         name: 'GST Tracker',
         description: 'Quickly track your GST returns',
         html: 'https://mygstportal.onrender.com/login',
