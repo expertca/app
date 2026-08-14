@@ -3,45 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Report Automation Tool</title>
+    <title>Professional Project Report Tool</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .tool-header { background-color: #2c3e50; color: white; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px; }
-        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card-header { background-color: #fff; border-bottom: 2px solid #f0f2f5; font-weight: 600; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; color: #334155; }
+        .tool-header { background-color: #0f172a; color: white; padding: 20px 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .card { border: none; border-radius: 8px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); margin-bottom: 24px; }
+        .card-header { background-color: #fff; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a; padding: 15px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+        .card-body { padding: 20px; }
+        label { font-weight: 500; color: #475569; font-size: 0.9rem; margin-bottom: 4px; }
         
-        /* Print specific styles for PDF Export */
+        /* Print specific styles for Professional PDF Export */
         @media print {
-            @page { size: A4 portrait; margin: 15mm; }
-            body { background-color: white; font-size: 10pt; }
+            @page { size: A4 portrait; margin: 8mm !important; } /* Narrow margin */
+            body { background-color: white; font-size: 9.5pt; color: #000; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            .report-container { padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
-            .page-break { page-break-before: always; }
-            table { page-break-inside: avoid; margin-bottom: 15px; width: 100%; border-collapse: collapse; }
-            .table-bordered th, .table-bordered td { border: 1px solid #000 !important; padding: 4px; }
-            th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt; }
-            td { font-size: 10pt; }
-            .annexure-title { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; color: #000; }
-            .cover-page { height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-            .cover-title { font-size: 28pt; font-weight: bold; margin-bottom: 20px; }
-            .cover-subtitle { font-size: 18pt; margin-bottom: 40px; }
+            .report-container { padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; width: 100%; max-width: 100%; }
+            .page-break { page-break-after: always !important; }
+            
+            /* Stretch Tables */
+            table { width: 100% !important; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; table-layout: auto; }
+            .table-bordered th, .table-bordered td { border: 1px solid #cbd5e1 !important; padding: 6px !important; word-wrap: break-word; }
+            th { background-color: #1e293b !important; color: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 9pt; font-weight: 600; text-align: center; }
+            td { font-size: 9pt; color: #0f172a; }
+            
+            .annexure-title { 
+                font-weight: 700; font-size: 12pt; margin-top: 10px; margin-bottom: 15px; 
+                color: #0f172a; background-color: #f8fafc !important; 
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+                padding: 6px 10px; border-left: 4px solid #3b82f6; 
+            }
+            
+            /* Cover Page Styling */
+            .cover-page { height: 95vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 3px solid #1e293b; padding: 30px; box-sizing: border-box; }
+            .cover-title { font-size: 28pt; font-weight: 800; margin-bottom: 10px; color: #0f172a; text-transform: uppercase; letter-spacing: 2px; }
+            .cover-subtitle { font-size: 18pt; margin-bottom: 40px; font-weight: 600; color: #334155; }
+            .cover-details { text-align: left; border-top: 2px solid #cbd5e1; padding-top: 25px; width: 85%; margin: 0 auto; }
+            .cover-details p { font-size: 12pt; margin-bottom: 10px; display: flex; justify-content: space-between; }
+            .cover-details span { font-weight: 600; color: #0f172a; }
         }
+        
         .print-only { display: none; }
-        .annexure-title { font-weight: bold; font-size: 1.2rem; margin-top: 40px; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; color: #2c3e50; }
-        .table th { background-color: #f8f9fa; }
+        .table th { background-color: #1e293b; color: white; font-weight: 500; }
+        .text-primary { color: #2563eb !important; }
+        .btn-remove { font-weight: bold; padding: 0.25rem 0.5rem; }
     </style>
 </head>
 <body>
     <div class="container py-4 no-print" id="inputSection">
         <div class="tool-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Project Report Automator</h4>
-            <span class="badge bg-light text-dark">HTML & JS Automation</span>
+            <div>
+                <h3 class="mb-1 fw-bold">Professional Project Report Automator</h3>
+                <small class="text-light opacity-75">Auto-generates detailed financial models & PDF reports</small>
+            </div>
         </div>
         
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <div class="card">
                     <div class="card-header">Project & Business Details</div>
                     <div class="card-body">
@@ -64,33 +84,58 @@
                         <div class="row">
                             <div class="col-6 mb-3"><label>Loan Amount (₹)</label><input type="number" id="loanAmt" class="form-control" value="15200"></div>
                             <div class="col-6 mb-3"><label>Own Contribution (₹)</label><input type="number" id="ownCont" class="form-control" value="5000"></div>
-                            <div class="col-6 mb-3"><label>Working Capital (₹)</label><input type="number" id="wc" class="form-control" value="5000"></div>
                             <div class="col-6 mb-3"><label>Loan Term (Years)</label><input type="number" id="term" class="form-control" value="5"></div>
                             <div class="col-6 mb-3"><label>Interest Rate (% p.a)</label><input type="number" step="0.1" id="roi" class="form-control" value="11.5"></div>
                             <div class="col-6 mb-3"><label>Target DSCR (Avg)</label><input type="number" step="0.1" id="targetDscr" class="form-control" value="1.5"></div>
                             <div class="col-6 mb-3"><label>Gross Profit Margin (%)</label><input type="number" step="0.1" id="gpm" class="form-control" value="30"></div>
-                            <div class="col-6 mb-3"><label>Corporate Tax Rate (%)</label><input type="number" step="0.1" id="tax" class="form-control" value="25"></div>
+                            <div class="col-12 mb-3"><label>Corporate Tax Rate (%)</label><input type="number" step="0.1" id="tax" class="form-control" value="0"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-6">
+            <div class="col-md-7">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Assets (Capital Expenditure)</span>
-                        <button class="btn btn-sm btn-outline-primary" onclick="addAsset()">+ Add</button>
+                        <span>Project Utilization</span>
+                        <button class="btn btn-sm btn-primary" onclick="addAsset()">+ Add Item</button>
                     </div>
                     <div class="card-body" id="assetsList">
-                        <div class="row mb-2 asset-row">
-                            <div class="col-5"><input type="text" class="form-control form-control-sm a-name" value="Shed & Infrastructure"></div>
-                            <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" value="10000" placeholder="Amount"></div>
-                            <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" value="10" placeholder="Depr %"></div>
+                        <div class="row mb-2 asset-row align-items-center gx-2">
+                            <div class="col-3">
+                                <select class="form-select form-select-sm a-type" onchange="toggleDepr(this)">
+                                    <option value="Asset" selected>Asset</option>
+                                    <option value="WC">Working Capital</option>
+                                </select>
+                            </div>
+                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Shed & Infrastructure"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="10000" placeholder="Amount"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" value="10" placeholder="Depr %"></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
                         </div>
-                        <div class="row mb-2 asset-row">
-                            <div class="col-5"><input type="text" class="form-control form-control-sm a-name" value="Equipment & Machinery"></div>
-                            <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" value="5200" placeholder="Amount"></div>
-                            <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" value="15" placeholder="Depr %"></div>
+                        <div class="row mb-2 asset-row align-items-center gx-2">
+                            <div class="col-3">
+                                <select class="form-select form-select-sm a-type" onchange="toggleDepr(this)">
+                                    <option value="Asset" selected>Asset</option>
+                                    <option value="WC">Working Capital</option>
+                                </select>
+                            </div>
+                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Equipment & Machinery"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="5200" placeholder="Amount"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" value="15" placeholder="Depr %"></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                        </div>
+                        <div class="row mb-2 asset-row align-items-center gx-2">
+                            <div class="col-3">
+                                <select class="form-select form-select-sm a-type" onchange="toggleDepr(this)">
+                                    <option value="Asset">Asset</option>
+                                    <option value="WC" selected>Working Capital</option>
+                                </select>
+                            </div>
+                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Working Capital Margin"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="5000" placeholder="Amount"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" disabled placeholder="N/A"></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
                         </div>
                     </div>
                 </div>
@@ -98,56 +143,84 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>Major Expenses (Recurring)</span>
-                        <button class="btn btn-sm btn-outline-primary" onclick="addExpense()">+ Add</button>
+                        <button class="btn btn-sm btn-primary" onclick="addExpense()">+ Add Expense</button>
                     </div>
                     <div class="card-body" id="expensesList">
-                        <div class="row mb-2 exp-row">
+                        <div class="row mb-2 exp-row align-items-center gx-2">
                             <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Labor & Maintenance"></div>
-                            <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" value="1200" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="1200" placeholder="Amt (Yr 1)"></div>
                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="5" placeholder="Inf %"></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
                         </div>
-                        <div class="row mb-2 exp-row">
+                        <div class="row mb-2 exp-row align-items-center gx-2">
                             <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Feed, Power & Misc"></div>
-                            <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" value="2500" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="2500" placeholder="Amt (Yr 1)"></div>
                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="8" placeholder="Inf %"></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
                         </div>
                     </div>
                 </div>
                 
-                <button class="btn btn-success w-100 py-3 mt-3 fw-bold shadow-sm" onclick="processReport()">Generate Automated Project Report</button>
+                <button class="btn btn-success w-100 py-3 mt-2 fw-bold shadow-sm" style="font-size: 1.1rem;" onclick="processReport()">Generate Professional Report</button>
             </div>
         </div>
     </div>
 
     <!-- Output Section -->
-    <div class="container report-container bg-white d-none p-5" id="outputSection">
+    <div class="container-fluid report-container bg-white d-none p-4" id="outputSection">
         <div class="text-end mb-4 no-print border-bottom pb-3">
-            <button class="btn btn-secondary me-2" onclick="editInputs()">Back to Edit</button>
-            <button class="btn btn-primary" onclick="window.print()">Export to PDF (Print)</button>
+            <button class="btn btn-outline-secondary me-2 fw-bold" onclick="editInputs()">Back to Edit</button>
+            <button class="btn btn-primary fw-bold" onclick="window.print()">Export to PDF (Print)</button>
         </div>
         
-        <div id="reportContent"></div>
+        <div id="reportContent" class="container-fluid px-0"></div>
     </div>
 
     <script>
         const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
         const numFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 
+        function getNum(id, def) {
+            let val = parseFloat(document.getElementById(id).value);
+            return isNaN(val) ? def : val;
+        }
+
+        function toggleDepr(selectEl) {
+            let row = selectEl.closest('.asset-row');
+            let deprInput = row.querySelector('.a-rate');
+            if (selectEl.value === 'WC') {
+                deprInput.value = '';
+                deprInput.disabled = true;
+                deprInput.placeholder = 'N/A';
+            } else {
+                deprInput.disabled = false;
+                deprInput.placeholder = 'Depr %';
+            }
+        }
+
         function addAsset() {
             const div = document.createElement('div');
-            div.className = 'row mb-2 asset-row';
-            div.innerHTML = `<div class="col-5"><input type="text" class="form-control form-control-sm a-name" placeholder="Asset Name"></div>
-                             <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" placeholder="Amount"></div>
-                             <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" placeholder="Depr %"></div>`;
+            div.className = 'row mb-2 asset-row align-items-center gx-2';
+            div.innerHTML = `<div class="col-3">
+                                <select class="form-select form-select-sm a-type" onchange="toggleDepr(this)">
+                                    <option value="Asset">Asset</option>
+                                    <option value="WC">Working Capital</option>
+                                </select>
+                             </div>
+                             <div class="col-4"><input type="text" class="form-control form-control-sm a-name" placeholder="Item Name"></div>
+                             <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" placeholder="Amount"></div>
+                             <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" placeholder="Depr %"></div>
+                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>`;
             document.getElementById('assetsList').appendChild(div);
         }
 
         function addExpense() {
             const div = document.createElement('div');
-            div.className = 'row mb-2 exp-row';
+            div.className = 'row mb-2 exp-row align-items-center gx-2';
             div.innerHTML = `<div class="col-5"><input type="text" class="form-control form-control-sm e-name" placeholder="Expense Name"></div>
-                             <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" placeholder="Amt (Yr 1)"></div>
-                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" placeholder="Inf %"></div>`;
+                             <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" placeholder="Amt (Yr 1)"></div>
+                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" placeholder="Inf %"></div>
+                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>`;
             document.getElementById('expensesList').appendChild(div);
         }
 
@@ -162,24 +235,34 @@
                 propName: document.getElementById('propName').value,
                 location: document.getElementById('bizLoc').value,
                 type: document.getElementById('bizType').value,
-                loanAmount: parseFloat(document.getElementById('loanAmt').value) || 0,
-                ownContrib: parseFloat(document.getElementById('ownCont').value) || 0,
-                wc: parseFloat(document.getElementById('wc').value) || 0,
-                term: parseInt(document.getElementById('term').value) || 5,
-                roi: parseFloat(document.getElementById('roi').value) || 10,
-                targetDscr: parseFloat(document.getElementById('targetDscr').value) || 1.5,
-                gpm: parseFloat(document.getElementById('gpm').value) || 30,
-                taxRate: parseFloat(document.getElementById('tax').value) || 25,
+                loanAmount: getNum('loanAmt', 0),
+                ownContrib: getNum('ownCont', 0),
+                term: getNum('term', 5),
+                roi: getNum('roi', 10),
+                targetDscr: getNum('targetDscr', 1.5),
+                gpm: getNum('gpm', 30),
+                taxRate: getNum('tax', 0),
                 assets: [],
+                wc: 0,
                 expenses: []
             };
 
+            let totalWC = 0;
             document.querySelectorAll('.asset-row').forEach(r => {
+                let pType = r.querySelector('.a-type').value;
                 let name = r.querySelector('.a-name').value;
                 let amt = parseFloat(r.querySelector('.a-amt').value);
-                let rate = parseFloat(r.querySelector('.a-rate').value);
-                if(name && amt) inputs.assets.push({name, amt, rate});
+                
+                if(name && amt) {
+                    if (pType === 'Asset') {
+                        let rate = parseFloat(r.querySelector('.a-rate').value) || 0;
+                        inputs.assets.push({name, amt, rate});
+                    } else {
+                        totalWC += amt;
+                    }
+                }
             });
+            inputs.wc = totalWC;
 
             document.querySelectorAll('.exp-row').forEach(r => {
                 let name = r.querySelector('.e-name').value;
@@ -222,31 +305,49 @@
                 loanSched.push({ year: y, op: opBal, int: yInt, prin: yPrin, close: bal });
             }
 
+            // Detailed Depreciation per Asset
             let deprSched = [];
-            let wdv = inp.assets.map(a => a.amt);
+            let wdvAssets = inp.assets.map(a => ({ name: a.name, rate: a.rate, wdv: a.amt }));
             for(let y=1; y<=n; y++) {
-                let yDepr = 0, yWdv = 0;
-                for(let i=0; i<wdv.length; i++) {
-                    let d = wdv[i] * (inp.assets[i].rate / 100);
-                    yDepr += d; wdv[i] -= d; yWdv += wdv[i];
-                }
-                deprSched.push({ year: y, depr: yDepr, wdvTotal: yWdv });
+                let yAssets = [];
+                let yDeprTotal = 0, yWdvTotal = 0;
+                
+                wdvAssets.forEach(a => {
+                    let d = a.wdv * (a.rate / 100);
+                    let cl = a.wdv - d;
+                    yAssets.push({ name: a.name, rate: a.rate, op: a.wdv, dep: d, cl: cl });
+                    yDeprTotal += d;
+                    yWdvTotal += cl;
+                    a.wdv = cl; // update for next year loop
+                });
+                deprSched.push({ year: y, assets: yAssets, deprTotal: yDeprTotal, wdvTotal: yWdvTotal });
             }
 
             let pl=[], cf=[], bs=[], dscr=[], payback=[];
-            let prevCash = 0, prevCap = inp.ownContrib, totalDscr = 0, cumInflow = 0;
-            let currentSales = baseSales;
             let initialInv = inp.loanAmount + inp.ownContrib;
+            let initialFA = inp.assets.reduce((sum, a) => sum + a.amt, 0);
+            
+            // To perfectly balance BS from day 1, any excess funds not used in FA or WC stay as cash.
+            let prevCash = initialInv - initialFA - inp.wc; 
+            let prevCap = inp.ownContrib;
+            let totalDscr = 0, cumInflow = 0;
+            let currentSales = baseSales;
             
             for(let y=1; y<=n; y++) {
                 let gp = currentSales * (inp.gpm / 100);
                 let cogs = currentSales - gp;
-                let exps = 0;
-                inp.expenses.forEach(e => exps += e.amt * Math.pow(1 + e.inf/100, y-1));
                 
-                let d = deprSched[y-1].depr;
+                let expDetails = [];
+                let totalExps = 0;
+                inp.expenses.forEach(e => {
+                    let eAmt = e.amt * Math.pow(1 + e.inf/100, y-1);
+                    expDetails.push({ name: e.name, amt: eAmt });
+                    totalExps += eAmt;
+                });
+                
+                let d = deprSched[y-1] ? deprSched[y-1].deprTotal : 0;
                 let i = loanSched[y-1].int;
-                let pbt = gp - exps - d - i;
+                let pbt = gp - totalExps - d - i;
                 let tax = pbt > 0 ? pbt * (inp.taxRate / 100) : 0;
                 let pat = pbt - tax;
 
@@ -260,9 +361,9 @@
 
                 let cap = prevCap + pat - draw;
                 let lClose = loanSched[y-1].close > 0 ? loanSched[y-1].close : 0;
-                let fa = deprSched[y-1].wdvTotal;
+                let fa = deprSched[y-1] ? deprSched[y-1].wdvTotal : 0;
 
-                pl.push({ sales: currentSales, cogs, gp, exps, d, i, pbt, tax, pat });
+                pl.push({ sales: currentSales, cogs, gp, expDetails, totalExps, d, i, pbt, tax, pat });
                 cf.push({ opCash: prevCash, pat, d, prin: loanSched[y-1].prin, draw, clCash: closeCash });
                 bs.push({ cap, loan: lClose, fa, wc: inp.wc, cash: closeCash });
                 dscr.push({ pat, d, i, prin: loanSched[y-1].prin, ratio: yrDscr });
@@ -276,25 +377,24 @@
                 currentSales *= 1.08; // 8% avg growth assumption
             }
 
-            return { avgDscr: totalDscr/n, emi, loanSched, deprSched, pl, cf, bs, dscr, payback, initialInv };
+            return { avgDscr: totalDscr/n, emi, loanSched, deprSched, pl, cf, bs, dscr, payback, initialInv, initialFA };
         }
 
-        function buildTable(title, headers, rows, isPageBreak=false) {
+        function buildTable(title, headers, rows) {
             let html = `<div class="annexure-title">${title}</div>`;
-            html += `<table class="table table-bordered table-sm table-striped"><thead><tr>`;
-            headers.forEach(h => html += `<th class="text-center">${h}</th>`);
+            html += `<table class="table table-bordered table-sm table-striped shadow-sm bg-white w-100"><thead><tr>`;
+            headers.forEach(h => html += `<th>${h}</th>`);
             html += `</tr></thead><tbody>`;
             rows.forEach(r => {
                 html += `<tr>`;
                 r.forEach((c, idx) => {
-                    let align = idx === 0 ? 'text-start fw-bold' : 'text-end';
+                    let align = idx === 0 ? 'text-start' : 'text-end';
                     let val = typeof c === 'number' ? formatter.format(c) : c;
                     html += `<td class="${align}">${val}</td>`;
                 });
                 html += `</tr>`;
             });
             html += `</tbody></table>`;
-            if(isPageBreak) html += `<div class="page-break"></div>`;
             return html;
         }
 
@@ -304,38 +404,52 @@
 
             let html = `
                 <div class="cover-page print-only">
-                    <div class="cover-title">PROJECT REPORT</div>
-                    <div class="cover-subtitle">${inp.bizName}</div>
-                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Proprietor:</strong> ${inp.propName}</p>
-                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Location:</strong> ${inp.location}</p>
-                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Nature of Business:</strong> ${inp.type}</p>
+                    <h1 class="cover-title">PROJECT REPORT</h1>
+                    <h2 class="cover-subtitle">${inp.bizName}</h2>
+                    <div class="cover-details">
+                        <p>Proprietor: <span>${inp.propName}</span></p>
+                        <p>Location: <span>${inp.location}</span></p>
+                        <p>Nature of Business: <span>${inp.type}</span></p>
+                        <p>Total Project Cost: <span>${formatter.format(data.initialInv)}</span></p>
+                        <p>Term Loan: <span>${formatter.format(inp.loanAmount)}</span></p>
+                    </div>
                 </div>
                 <div class="page-break print-only"></div>
                 
-                <h3 class="text-center mb-4 border-bottom pb-2">Project Summary</h3>
-                <table class="table table-bordered mb-5">
+                <h3 class="text-center mb-4 border-bottom pb-3 fw-bold" style="color: #0f172a;">Executive Project Summary</h3>
+                <table class="table table-bordered mb-5 shadow-sm bg-white w-100">
                     <tr><th>Business Name</th><td>${inp.bizName}</td><th>Proprietor</th><td>${inp.propName}</td></tr>
-                    <tr><th>Cost of Project</th><td>${formatter.format(data.initialInv)}</td><th>Loan Amount</th><td>${formatter.format(inp.loanAmount)}</td></tr>
+                    <tr><th>Total Financial Outlay</th><td>${formatter.format(data.initialInv)}</td><th>Loan Amount</th><td>${formatter.format(inp.loanAmount)}</td></tr>
+                    <tr><th>Fixed Assets Cost</th><td>${formatter.format(data.initialFA)}</td><th>Working Capital Margin</th><td>${formatter.format(inp.wc)}</td></tr>
                     <tr><th>Interest Rate</th><td>${inp.roi}% p.a.</td><th>Term</th><td>${inp.term} Years</td></tr>
                     <tr><th>Calculated EMI</th><td>${formatter.format(data.emi)} / month</td><th>Target / Avg DSCR</th><td>${numFormat.format(data.avgDscr)}</td></tr>
                 </table>
                 <div class="page-break print-only"></div>
             `;
 
-            // 1. Profitability
+            // 1. Detailed Profitability
             let plRows = [
-                ['Gross Receipts / Sales', ...data.pl.map(p=>p.sales)],
-                ['Cost of Goods / Direct Exp', ...data.pl.map(p=>p.cogs)],
-                ['Gross Profit', ...data.pl.map(p=>p.gp)],
-                ['Major / Indirect Expenses', ...data.pl.map(p=>p.exps)],
-                ['EBITDA', ...data.pl.map(p=>p.gp - p.exps)],
-                ['Depreciation', ...data.pl.map(p=>p.d)],
-                ['Interest on Term Loan', ...data.pl.map(p=>p.i)],
-                ['Profit Before Tax (PBT)', ...data.pl.map(p=>p.pbt)],
-                ['Corporate Tax', ...data.pl.map(p=>p.tax)],
-                ['Net Profit After Tax (PAT)', ...data.pl.map(p=>p.pat)]
+                ['<span class="fw-bold text-dark">Gross Receipts / Sales</span>', ...data.pl.map(p=>p.sales)],
+                ['Less: Cost of Goods / Direct Exp', ...data.pl.map(p=>p.cogs)],
+                ['<span class="fw-bold text-dark">Gross Profit</span>', ...data.pl.map(p=>p.gp)]
             ];
-            html += buildTable('Annexure 1: Projected Profitability Statement', yearsHead, plRows, false);
+            
+            inp.expenses.forEach((e, idx) => {
+                plRows.push([`Less: ${e.name}`, ...data.pl.map(p => p.expDetails[idx].amt)]);
+            });
+
+            plRows.push(
+                ['<span class="fw-bold text-dark">Total Indirect Expenses</span>', ...data.pl.map(p=>p.totalExps)],
+                ['<span class="fw-bold text-dark">EBITDA</span>', ...data.pl.map(p=>p.gp - p.totalExps)],
+                ['Less: Depreciation', ...data.pl.map(p=>p.d)],
+                ['Less: Interest on Term Loan', ...data.pl.map(p=>p.i)],
+                ['<span class="fw-bold text-dark">Profit Before Tax (PBT)</span>', ...data.pl.map(p=>p.pbt)],
+                ['Less: Corporate Tax', ...data.pl.map(p=>p.tax)],
+                ['<span class="fw-bold text-success">Net Profit After Tax (PAT)</span>', ...data.pl.map(p=>p.pat)]
+            );
+            
+            html += buildTable('Annexure 1: Projected Profitability Statement', yearsHead, plRows);
+            html += `<div class="page-break print-only"></div>`;
 
             // 2. Cash Flow
             let cfRows = [
@@ -344,44 +458,70 @@
                 ['Add: Depreciation', ...data.cf.map(c=>c.d)],
                 ['Less: Principal Repayment', ...data.cf.map(c=>c.prin)],
                 ['Less: Partner/Proprietor Drawings', ...data.cf.map(c=>c.draw)],
-                ['Closing Cash Balance', ...data.cf.map(c=>c.clCash)]
+                ['<span class="fw-bold text-dark">Closing Cash Balance</span>', ...data.cf.map(c=>c.clCash)]
             ];
-            html += buildTable('Annexure 2: Projected Cash Flow Statement', yearsHead, cfRows, true);
+            html += buildTable('Annexure 2: Projected Cash Flow Statement', yearsHead, cfRows);
+            html += `<div class="page-break print-only"></div>`;
 
-            // 3. Depreciation
-            let depRows = data.deprSched.map(d => [`Year ${d.year}`, d.depr, d.wdvTotal]);
-            html += buildTable('Annexure 3: Calculation of Depreciation', ['Year', 'Depreciation', 'Closing WDV'], depRows, false);
+            // 3. Detailed Depreciation
+            let depRows = [];
+            if (data.deprSched.length > 0) {
+                data.deprSched.forEach(ds => {
+                    depRows.push([`<span class="fw-bold text-primary">Year ${ds.year}</span>`, '', '', '', '']);
+                    ds.assets.forEach(a => {
+                        depRows.push([a.name, a.rate + '%', a.op, a.dep, a.cl]);
+                    });
+                    depRows.push([
+                        '<span class="fw-bold text-dark">Total</span>', '', '', 
+                        `<span class="fw-bold text-dark">${formatter.format(ds.deprTotal)}</span>`, 
+                        `<span class="fw-bold text-dark">${formatter.format(ds.wdvTotal)}</span>`
+                    ]);
+                });
+                html += buildTable('Annexure 3: Detailed Asset Depreciation', ['Particulars', 'Rate', 'Opening WDV', 'Depreciation', 'Closing WDV'], depRows);
+            } else {
+                html += `<div class="annexure-title">Annexure 3: Detailed Asset Depreciation</div><p class="p-3 border">No depreciable assets found in project utilization.</p>`;
+            }
+            html += `<div class="page-break print-only"></div>`;
 
             // 4. DSCR
             let dscrRows = data.dscr.map((d, i) => [
                 `Year ${i+1}`, d.pat, d.d, d.i, d.pat+d.d+d.i, d.prin+d.i, numFormat.format(d.ratio)
             ]);
-            html += buildTable('Annexure 4: Debt Service Coverage Ratio (DSCR)', ['Year', 'PAT', 'Depreciation', 'Interest', 'Cash Accruals', 'Repayment + Int', 'DSCR'], dscrRows, true);
+            html += buildTable('Annexure 4: Debt Service Coverage Ratio (DSCR)', ['Year', 'PAT', 'Depreciation', 'Interest', 'Cash Accruals', 'Repayment + Int', 'DSCR'], dscrRows);
+            html += `<div class="page-break print-only"></div>`;
 
             // 5. Loan Schedule
             let loanRows = data.loanSched.map(l => [`Year ${l.year}`, l.op, l.int, l.prin, l.close]);
-            html += buildTable('Annexure 5: Interest & Repayment Schedule', ['Year', 'Opening Balance', 'Interest', 'Principal Repayment', 'Closing Balance'], loanRows, false);
+            html += buildTable('Annexure 5: Interest & Repayment Schedule', ['Year', 'Opening Balance', 'Interest', 'Principal Repayment', 'Closing Balance'], loanRows);
+            html += `<div class="page-break print-only"></div>`;
 
             // 6. Return on Investment
             let roiRows = data.pl.map((p, i) => [`Year ${i+1}`, p.pat, data.initialInv, numFormat.format((p.pat/data.initialInv)*100) + '%']);
-            html += buildTable('Annexure 6: Return on Investment (ROI)', ['Year', 'Net Profit (PAT)', 'Total Investment', 'ROI %'], roiRows, true);
+            html += buildTable('Annexure 6: Return on Investment (ROI)', ['Year', 'Net Profit (PAT)', 'Total Investment', 'ROI %'], roiRows);
+            html += `<div class="page-break print-only"></div>`;
 
             // 7. Balance Sheet
             let bsRows = [
                 ['Capital Account', ...data.bs.map(b=>b.cap)],
                 ['Term Loan', ...data.bs.map(b=>b.loan)],
-                ['Total Liabilities', ...data.bs.map(b=>b.cap + b.loan)],
+                ['<span class="fw-bold text-dark">Total Liabilities</span>', ...data.bs.map(b=>b.cap + b.loan)],
                 ['Fixed Assets (Net Block)', ...data.bs.map(b=>b.fa)],
                 ['Working Capital', ...data.bs.map(b=>b.wc)],
                 ['Cash & Bank Balance', ...data.bs.map(b=>b.cash)],
-                ['Total Assets', ...data.bs.map(b=>b.fa + b.wc + b.cash)]
+                ['<span class="fw-bold text-dark">Total Assets</span>', ...data.bs.map(b=>b.fa + b.wc + b.cash)]
             ];
-            html += buildTable('Annexure 7: Projected Balance Sheet', yearsHead, bsRows, false);
+            html += buildTable('Annexure 7: Projected Balance Sheet', yearsHead, bsRows);
+            html += `<div class="page-break print-only"></div>`;
 
             // 8. Payback Period
-            let pbRows = data.payback.map(p => [`Year ${p.year}`, p.inflow, p.cum, p.status]);
-            html += buildTable('Annexure 8: Payback Period Calculation', ['Year', 'Annual Cash Inflow', 'Cumulative Cash Inflow', 'Recovery Status'], pbRows, false);
-
+            let pbRows = data.payback.map(p => [
+                `Year ${p.year}`, 
+                p.inflow, 
+                p.cum, 
+                `<span class="badge ${p.status === 'Recovered' ? 'bg-success' : 'bg-warning text-dark'}">${p.status}</span>`
+            ]);
+            html += buildTable('Annexure 8: Payback Period Calculation', ['Year', 'Annual Cash Inflow', 'Cumulative Cash Inflow', 'Recovery Status'], pbRows);
+            
             document.getElementById('reportContent').innerHTML = html;
         }
     </script>
