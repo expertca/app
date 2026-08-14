@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Report Automation Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .tool-header { background-color: #2c3e50; color: white; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px; }
+        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-header { background-color: #fff; border-bottom: 2px solid #f0f2f5; font-weight: 600; }
+        
+        /* Print specific styles for PDF Export */
+        @media print {
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background-color: white; font-size: 10pt; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .report-container { padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
+            .page-break { page-break-before: always; }
+            table { page-break-inside: avoid; margin-bottom: 15px; width: 100%; border-collapse: collapse; }
+            .table-bordered th, .table-bordered td { border: 1px solid #000 !important; padding: 4px; }
+            th { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10pt; }
+            td { font-size: 10pt; }
+            .annexure-title { text-align: center; font-weight: bold; font-size: 14pt; margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; color: #000; }
+            .cover-page { height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+            .cover-title { font-size: 28pt; font-weight: bold; margin-bottom: 20px; }
+            .cover-subtitle { font-size: 18pt; margin-bottom: 40px; }
+        }
+        .print-only { display: none; }
+        .annexure-title { font-weight: bold; font-size: 1.2rem; margin-top: 40px; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; color: #2c3e50; }
+        .table th { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container py-4 no-print" id="inputSection">
+        <div class="tool-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Project Report Automator</h4>
+            <span class="badge bg-light text-dark">HTML & JS Automation</span>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Project & Business Details</div>
+                    <div class="card-body">
+                        <div class="mb-3"><label>Business Name</label><input type="text" id="bizName" class="form-control" value="Chidanda Poultry Farms"></div>
+                        <div class="mb-3"><label>Proprietor Name</label><input type="text" id="propName" class="form-control" value="Mr. Chidanda"></div>
+                        <div class="mb-3"><label>Location</label><input type="text" id="bizLoc" class="form-control" value="Bantwal, Karnataka"></div>
+                        <div class="mb-3"><label>Project Type</label>
+                            <select id="bizType" class="form-select">
+                                <option value="Trading">Trading</option>
+                                <option value="Service">Service</option>
+                                <option value="Agro / Manufacturing" selected>Agro / Manufacturing</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Loan & Financial Parameters</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 mb-3"><label>Loan Amount (₹)</label><input type="number" id="loanAmt" class="form-control" value="15200"></div>
+                            <div class="col-6 mb-3"><label>Own Contribution (₹)</label><input type="number" id="ownCont" class="form-control" value="5000"></div>
+                            <div class="col-6 mb-3"><label>Working Capital (₹)</label><input type="number" id="wc" class="form-control" value="5000"></div>
+                            <div class="col-6 mb-3"><label>Loan Term (Years)</label><input type="number" id="term" class="form-control" value="5"></div>
+                            <div class="col-6 mb-3"><label>Interest Rate (% p.a)</label><input type="number" step="0.1" id="roi" class="form-control" value="11.5"></div>
+                            <div class="col-6 mb-3"><label>Target DSCR (Avg)</label><input type="number" step="0.1" id="targetDscr" class="form-control" value="1.5"></div>
+                            <div class="col-6 mb-3"><label>Gross Profit Margin (%)</label><input type="number" step="0.1" id="gpm" class="form-control" value="30"></div>
+                            <div class="col-6 mb-3"><label>Corporate Tax Rate (%)</label><input type="number" step="0.1" id="tax" class="form-control" value="25"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Assets (Capital Expenditure)</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="addAsset()">+ Add</button>
+                    </div>
+                    <div class="card-body" id="assetsList">
+                        <div class="row mb-2 asset-row">
+                            <div class="col-5"><input type="text" class="form-control form-control-sm a-name" value="Shed & Infrastructure"></div>
+                            <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" value="10000" placeholder="Amount"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" value="10" placeholder="Depr %"></div>
+                        </div>
+                        <div class="row mb-2 asset-row">
+                            <div class="col-5"><input type="text" class="form-control form-control-sm a-name" value="Equipment & Machinery"></div>
+                            <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" value="5200" placeholder="Amount"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" value="15" placeholder="Depr %"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Major Expenses (Recurring)</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="addExpense()">+ Add</button>
+                    </div>
+                    <div class="card-body" id="expensesList">
+                        <div class="row mb-2 exp-row">
+                            <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Labor & Maintenance"></div>
+                            <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" value="1200" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="5" placeholder="Inf %"></div>
+                        </div>
+                        <div class="row mb-2 exp-row">
+                            <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Feed, Power & Misc"></div>
+                            <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" value="2500" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="8" placeholder="Inf %"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success w-100 py-3 mt-3 fw-bold shadow-sm" onclick="processReport()">Generate Automated Project Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Output Section -->
+    <div class="container report-container bg-white d-none p-5" id="outputSection">
+        <div class="text-end mb-4 no-print border-bottom pb-3">
+            <button class="btn btn-secondary me-2" onclick="editInputs()">Back to Edit</button>
+            <button class="btn btn-primary" onclick="window.print()">Export to PDF (Print)</button>
+        </div>
+        
+        <div id="reportContent"></div>
+    </div>
+
+    <script>
+        const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+        const numFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+
+        function addAsset() {
+            const div = document.createElement('div');
+            div.className = 'row mb-2 asset-row';
+            div.innerHTML = `<div class="col-5"><input type="text" class="form-control form-control-sm a-name" placeholder="Asset Name"></div>
+                             <div class="col-4"><input type="number" class="form-control form-control-sm a-amt" placeholder="Amount"></div>
+                             <div class="col-3"><input type="number" class="form-control form-control-sm a-rate" placeholder="Depr %"></div>`;
+            document.getElementById('assetsList').appendChild(div);
+        }
+
+        function addExpense() {
+            const div = document.createElement('div');
+            div.className = 'row mb-2 exp-row';
+            div.innerHTML = `<div class="col-5"><input type="text" class="form-control form-control-sm e-name" placeholder="Expense Name"></div>
+                             <div class="col-4"><input type="number" class="form-control form-control-sm e-amt" placeholder="Amt (Yr 1)"></div>
+                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" placeholder="Inf %"></div>`;
+            document.getElementById('expensesList').appendChild(div);
+        }
+
+        function editInputs() {
+            document.getElementById('outputSection').classList.add('d-none');
+            document.getElementById('inputSection').classList.remove('d-none');
+        }
+
+        function processReport() {
+            let inputs = {
+                bizName: document.getElementById('bizName').value,
+                propName: document.getElementById('propName').value,
+                location: document.getElementById('bizLoc').value,
+                type: document.getElementById('bizType').value,
+                loanAmount: parseFloat(document.getElementById('loanAmt').value) || 0,
+                ownContrib: parseFloat(document.getElementById('ownCont').value) || 0,
+                wc: parseFloat(document.getElementById('wc').value) || 0,
+                term: parseInt(document.getElementById('term').value) || 5,
+                roi: parseFloat(document.getElementById('roi').value) || 10,
+                targetDscr: parseFloat(document.getElementById('targetDscr').value) || 1.5,
+                gpm: parseFloat(document.getElementById('gpm').value) || 30,
+                taxRate: parseFloat(document.getElementById('tax').value) || 25,
+                assets: [],
+                expenses: []
+            };
+
+            document.querySelectorAll('.asset-row').forEach(r => {
+                let name = r.querySelector('.a-name').value;
+                let amt = parseFloat(r.querySelector('.a-amt').value);
+                let rate = parseFloat(r.querySelector('.a-rate').value);
+                if(name && amt) inputs.assets.push({name, amt, rate});
+            });
+
+            document.querySelectorAll('.exp-row').forEach(r => {
+                let name = r.querySelector('.e-name').value;
+                let amt = parseFloat(r.querySelector('.e-amt').value);
+                let inf = parseFloat(r.querySelector('.e-inf').value);
+                if(name && amt) inputs.expenses.push({name, amt, inf});
+            });
+
+            // Goal Seek for Base Sales to match Target DSCR
+            let minS = 10, maxS = 100000000, bestS = 1000, result = null;
+            for(let i=0; i<60; i++) {
+                let mid = (minS + maxS) / 2;
+                result = simulateFinance(mid, inputs);
+                if(result.avgDscr < inputs.targetDscr) minS = mid;
+                else { maxS = mid; bestS = mid; }
+            }
+            
+            let finalData = simulateFinance(bestS, inputs);
+            renderReport(finalData, inputs);
+            
+            document.getElementById('inputSection').classList.add('d-none');
+            document.getElementById('outputSection').classList.remove('d-none');
+        }
+
+        function simulateFinance(baseSales, inp) {
+            let n = inp.term;
+            let r_monthly = (inp.roi / 100) / 12;
+            let emi = (inp.loanAmount * r_monthly * Math.pow(1+r_monthly, n*12)) / (Math.pow(1+r_monthly, n*12) - 1);
+            
+            let loanSched = [];
+            let bal = inp.loanAmount;
+            for(let y=1; y<=n; y++) {
+                let yInt = 0, yPrin = 0;
+                let opBal = bal;
+                for(let m=1; m<=12; m++) {
+                    let i = bal * r_monthly;
+                    let p = emi - i;
+                    yInt += i; yPrin += p; bal -= p;
+                }
+                loanSched.push({ year: y, op: opBal, int: yInt, prin: yPrin, close: bal });
+            }
+
+            let deprSched = [];
+            let wdv = inp.assets.map(a => a.amt);
+            for(let y=1; y<=n; y++) {
+                let yDepr = 0, yWdv = 0;
+                for(let i=0; i<wdv.length; i++) {
+                    let d = wdv[i] * (inp.assets[i].rate / 100);
+                    yDepr += d; wdv[i] -= d; yWdv += wdv[i];
+                }
+                deprSched.push({ year: y, depr: yDepr, wdvTotal: yWdv });
+            }
+
+            let pl=[], cf=[], bs=[], dscr=[], payback=[];
+            let prevCash = 0, prevCap = inp.ownContrib, totalDscr = 0, cumInflow = 0;
+            let currentSales = baseSales;
+            let initialInv = inp.loanAmount + inp.ownContrib;
+            
+            for(let y=1; y<=n; y++) {
+                let gp = currentSales * (inp.gpm / 100);
+                let cogs = currentSales - gp;
+                let exps = 0;
+                inp.expenses.forEach(e => exps += e.amt * Math.pow(1 + e.inf/100, y-1));
+                
+                let d = deprSched[y-1].depr;
+                let i = loanSched[y-1].int;
+                let pbt = gp - exps - d - i;
+                let tax = pbt > 0 ? pbt * (inp.taxRate / 100) : 0;
+                let pat = pbt - tax;
+
+                let yrDscr = (pat + d + i) / (loanSched[y-1].prin + i);
+                totalDscr += yrDscr;
+
+                let availCash = prevCash + pat + d - loanSched[y-1].prin;
+                let idealCash = currentSales * 0.05; 
+                let draw = availCash > idealCash ? availCash - idealCash : 0;
+                let closeCash = availCash - draw;
+
+                let cap = prevCap + pat - draw;
+                let lClose = loanSched[y-1].close > 0 ? loanSched[y-1].close : 0;
+                let fa = deprSched[y-1].wdvTotal;
+
+                pl.push({ sales: currentSales, cogs, gp, exps, d, i, pbt, tax, pat });
+                cf.push({ opCash: prevCash, pat, d, prin: loanSched[y-1].prin, draw, clCash: closeCash });
+                bs.push({ cap, loan: lClose, fa, wc: inp.wc, cash: closeCash });
+                dscr.push({ pat, d, i, prin: loanSched[y-1].prin, ratio: yrDscr });
+
+                let inflow = pat + d;
+                cumInflow += inflow;
+                payback.push({ year: y, inflow, cum: cumInflow, status: cumInflow >= initialInv ? 'Recovered' : 'Pending' });
+
+                prevCash = closeCash;
+                prevCap = cap;
+                currentSales *= 1.08; // 8% avg growth assumption
+            }
+
+            return { avgDscr: totalDscr/n, emi, loanSched, deprSched, pl, cf, bs, dscr, payback, initialInv };
+        }
+
+        function buildTable(title, headers, rows, isPageBreak=false) {
+            let html = `<div class="annexure-title">${title}</div>`;
+            html += `<table class="table table-bordered table-sm table-striped"><thead><tr>`;
+            headers.forEach(h => html += `<th class="text-center">${h}</th>`);
+            html += `</tr></thead><tbody>`;
+            rows.forEach(r => {
+                html += `<tr>`;
+                r.forEach((c, idx) => {
+                    let align = idx === 0 ? 'text-start fw-bold' : 'text-end';
+                    let val = typeof c === 'number' ? formatter.format(c) : c;
+                    html += `<td class="${align}">${val}</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += `</tbody></table>`;
+            if(isPageBreak) html += `<div class="page-break"></div>`;
+            return html;
+        }
+
+        function renderReport(data, inp) {
+            let yearsHead = ['Particulars'];
+            for(let i=1; i<=inp.term; i++) yearsHead.push(`Year ${i}`);
+
+            let html = `
+                <div class="cover-page print-only">
+                    <div class="cover-title">PROJECT REPORT</div>
+                    <div class="cover-subtitle">${inp.bizName}</div>
+                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Proprietor:</strong> ${inp.propName}</p>
+                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Location:</strong> ${inp.location}</p>
+                    <p style="font-size:14pt; margin-bottom: 5px;"><strong>Nature of Business:</strong> ${inp.type}</p>
+                </div>
+                <div class="page-break print-only"></div>
+                
+                <h3 class="text-center mb-4 border-bottom pb-2">Project Summary</h3>
+                <table class="table table-bordered mb-5">
+                    <tr><th>Business Name</th><td>${inp.bizName}</td><th>Proprietor</th><td>${inp.propName}</td></tr>
+                    <tr><th>Cost of Project</th><td>${formatter.format(data.initialInv)}</td><th>Loan Amount</th><td>${formatter.format(inp.loanAmount)}</td></tr>
+                    <tr><th>Interest Rate</th><td>${inp.roi}% p.a.</td><th>Term</th><td>${inp.term} Years</td></tr>
+                    <tr><th>Calculated EMI</th><td>${formatter.format(data.emi)} / month</td><th>Target / Avg DSCR</th><td>${numFormat.format(data.avgDscr)}</td></tr>
+                </table>
+                <div class="page-break print-only"></div>
+            `;
+
+            // 1. Profitability
+            let plRows = [
+                ['Gross Receipts / Sales', ...data.pl.map(p=>p.sales)],
+                ['Cost of Goods / Direct Exp', ...data.pl.map(p=>p.cogs)],
+                ['Gross Profit', ...data.pl.map(p=>p.gp)],
+                ['Major / Indirect Expenses', ...data.pl.map(p=>p.exps)],
+                ['EBITDA', ...data.pl.map(p=>p.gp - p.exps)],
+                ['Depreciation', ...data.pl.map(p=>p.d)],
+                ['Interest on Term Loan', ...data.pl.map(p=>p.i)],
+                ['Profit Before Tax (PBT)', ...data.pl.map(p=>p.pbt)],
+                ['Corporate Tax', ...data.pl.map(p=>p.tax)],
+                ['Net Profit After Tax (PAT)', ...data.pl.map(p=>p.pat)]
+            ];
+            html += buildTable('Annexure 1: Projected Profitability Statement', yearsHead, plRows, false);
+
+            // 2. Cash Flow
+            let cfRows = [
+                ['Opening Cash Balance', ...data.cf.map(c=>c.opCash)],
+                ['Add: Net Profit (PAT)', ...data.cf.map(c=>c.pat)],
+                ['Add: Depreciation', ...data.cf.map(c=>c.d)],
+                ['Less: Principal Repayment', ...data.cf.map(c=>c.prin)],
+                ['Less: Partner/Proprietor Drawings', ...data.cf.map(c=>c.draw)],
+                ['Closing Cash Balance', ...data.cf.map(c=>c.clCash)]
+            ];
+            html += buildTable('Annexure 2: Projected Cash Flow Statement', yearsHead, cfRows, true);
+
+            // 3. Depreciation
+            let depRows = data.deprSched.map(d => [`Year ${d.year}`, d.depr, d.wdvTotal]);
+            html += buildTable('Annexure 3: Calculation of Depreciation', ['Year', 'Depreciation', 'Closing WDV'], depRows, false);
+
+            // 4. DSCR
+            let dscrRows = data.dscr.map((d, i) => [
+                `Year ${i+1}`, d.pat, d.d, d.i, d.pat+d.d+d.i, d.prin+d.i, numFormat.format(d.ratio)
+            ]);
+            html += buildTable('Annexure 4: Debt Service Coverage Ratio (DSCR)', ['Year', 'PAT', 'Depreciation', 'Interest', 'Cash Accruals', 'Repayment + Int', 'DSCR'], dscrRows, true);
+
+            // 5. Loan Schedule
+            let loanRows = data.loanSched.map(l => [`Year ${l.year}`, l.op, l.int, l.prin, l.close]);
+            html += buildTable('Annexure 5: Interest & Repayment Schedule', ['Year', 'Opening Balance', 'Interest', 'Principal Repayment', 'Closing Balance'], loanRows, false);
+
+            // 6. Return on Investment
+            let roiRows = data.pl.map((p, i) => [`Year ${i+1}`, p.pat, data.initialInv, numFormat.format((p.pat/data.initialInv)*100) + '%']);
+            html += buildTable('Annexure 6: Return on Investment (ROI)', ['Year', 'Net Profit (PAT)', 'Total Investment', 'ROI %'], roiRows, true);
+
+            // 7. Balance Sheet
+            let bsRows = [
+                ['Capital Account', ...data.bs.map(b=>b.cap)],
+                ['Term Loan', ...data.bs.map(b=>b.loan)],
+                ['Total Liabilities', ...data.bs.map(b=>b.cap + b.loan)],
+                ['Fixed Assets (Net Block)', ...data.bs.map(b=>b.fa)],
+                ['Working Capital', ...data.bs.map(b=>b.wc)],
+                ['Cash & Bank Balance', ...data.bs.map(b=>b.cash)],
+                ['Total Assets', ...data.bs.map(b=>b.fa + b.wc + b.cash)]
+            ];
+            html += buildTable('Annexure 7: Projected Balance Sheet', yearsHead, bsRows, false);
+
+            // 8. Payback Period
+            let pbRows = data.payback.map(p => [`Year ${p.year}`, p.inflow, p.cum, p.status]);
+            html += buildTable('Annexure 8: Payback Period Calculation', ['Year', 'Annual Cash Inflow', 'Cumulative Cash Inflow', 'Recovery Status'], pbRows, false);
+
+            document.getElementById('reportContent').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
