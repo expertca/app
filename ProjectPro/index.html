@@ -16,7 +16,7 @@
         
         /* Print specific styles for Professional PDF Export */
         @media print {
-            @page { size: A4 portrait; margin: 8mm !important; } /* Narrow margin */
+            @page { size: A4 portrait; margin: 8mm !important; }
             body { background-color: white; font-size: 9.5pt; color: #000; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
@@ -49,6 +49,10 @@
         .table th { background-color: #1e293b; color: white; font-weight: 500; }
         .text-primary { color: #2563eb !important; }
         .btn-remove { font-weight: bold; padding: 0.25rem 0.5rem; }
+        
+        .validator-box { border-radius: 6px; padding: 12px; margin-bottom: 15px; border: 1px solid transparent; transition: all 0.3s ease; }
+        .validator-success { background-color: #d1fae5; border-color: #34d399; color: #065f46; }
+        .validator-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -82,12 +86,12 @@
                     <div class="card-header">Loan & Financial Parameters</div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-6 mb-3"><label>Loan Amount (₹)</label><input type="number" id="loanAmt" class="form-control" value="15200"></div>
-                            <div class="col-6 mb-3"><label>Own Contribution (₹)</label><input type="number" id="ownCont" class="form-control" value="5000"></div>
+                            <div class="col-6 mb-3"><label>Loan Amount (₹)</label><input type="number" id="loanAmt" class="form-control cost-input" value="100000"></div>
+                            <div class="col-6 mb-3"><label>Own Contribution (₹)</label><input type="number" id="ownCont" class="form-control cost-input" value="50000"></div>
                             <div class="col-6 mb-3"><label>Loan Term (Years)</label><input type="number" id="term" class="form-control" value="5"></div>
                             <div class="col-6 mb-3"><label>Interest Rate (% p.a)</label><input type="number" step="0.1" id="roi" class="form-control" value="11.5"></div>
-                            <div class="col-6 mb-3"><label>Target DSCR (Avg)</label><input type="number" step="0.1" id="targetDscr" class="form-control" value="1.5"></div>
-                            <div class="col-6 mb-3"><label>Gross Profit Margin (%)</label><input type="number" step="0.1" id="gpm" class="form-control" value="30"></div>
+                            <div class="col-6 mb-3"><label>Target DSCR (Avg)</label><input type="number" step="0.1" id="targetDscr" class="form-control" value="2"></div>
+                            <div class="col-6 mb-3"><label>Gross Profit Margin (%)</label><input type="number" step="0.1" id="gpm" class="form-control" value="15"></div>
                             <div class="col-12 mb-3"><label>Corporate Tax Rate (%)</label><input type="number" step="0.1" id="tax" class="form-control" value="0"></div>
                         </div>
                     </div>
@@ -108,22 +112,10 @@
                                     <option value="WC">Working Capital</option>
                                 </select>
                             </div>
-                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Shed & Infrastructure"></div>
-                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="10000" placeholder="Amount"></div>
+                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Fixed Asset"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt util-input" value="100000" placeholder="Amount"></div>
                             <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" value="10" placeholder="Depr %"></div>
-                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
-                        </div>
-                        <div class="row mb-2 asset-row align-items-center gx-2">
-                            <div class="col-3">
-                                <select class="form-select form-select-sm a-type" onchange="toggleDepr(this)">
-                                    <option value="Asset" selected>Asset</option>
-                                    <option value="WC">Working Capital</option>
-                                </select>
-                            </div>
-                            <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Equipment & Machinery"></div>
-                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="5200" placeholder="Amount"></div>
-                            <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" value="15" placeholder="Depr %"></div>
-                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>
                         </div>
                         <div class="row mb-2 asset-row align-items-center gx-2">
                             <div class="col-3">
@@ -133,9 +125,9 @@
                                 </select>
                             </div>
                             <div class="col-4"><input type="text" class="form-control form-control-sm a-name" value="Working Capital Margin"></div>
-                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" value="5000" placeholder="Amount"></div>
+                            <div class="col-2"><input type="number" class="form-control form-control-sm a-amt util-input" value="50000" placeholder="Amount"></div>
                             <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" disabled placeholder="N/A"></div>
-                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>
                         </div>
                     </div>
                 </div>
@@ -148,20 +140,28 @@
                     <div class="card-body" id="expensesList">
                         <div class="row mb-2 exp-row align-items-center gx-2">
                             <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Labor & Maintenance"></div>
-                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="1200" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="15000" placeholder="Amt (Yr 1)"></div>
                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="5" placeholder="Inf %"></div>
-                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>
                         </div>
                         <div class="row mb-2 exp-row align-items-center gx-2">
                             <div class="col-5"><input type="text" class="form-control form-control-sm e-name" value="Feed, Power & Misc"></div>
-                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="2500" placeholder="Amt (Yr 1)"></div>
+                            <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" value="10000" placeholder="Amt (Yr 1)"></div>
                             <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" value="8" placeholder="Inf %"></div>
-                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                            <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>
                         </div>
                     </div>
                 </div>
                 
-                <button class="btn btn-success w-100 py-3 mt-2 fw-bold shadow-sm" style="font-size: 1.1rem;" onclick="processReport()">Generate Professional Report</button>
+                <div id="validationBox" class="validator-box validator-error text-center">
+                    <div class="d-flex justify-content-around fw-bold mb-1">
+                        <span>Total Project Cost: <span id="valCost">₹0</span></span>
+                        <span>Total Utilization: <span id="valUtil">₹0</span></span>
+                    </div>
+                    <div id="valMessage" class="small">Checking balance...</div>
+                </div>
+                
+                <button id="generateBtn" class="btn btn-success w-100 py-3 fw-bold shadow-sm" style="font-size: 1.1rem;" onclick="processReport()" disabled>Generate Professional Report</button>
             </div>
         </div>
     </div>
@@ -184,6 +184,47 @@
             let val = parseFloat(document.getElementById(id).value);
             return isNaN(val) ? def : val;
         }
+        
+        // --- VALIDATOR LOGIC ---
+        function validateTotals() {
+            let loanAmt = getNum('loanAmt', 0);
+            let ownCont = getNum('ownCont', 0);
+            let totalCost = loanAmt + ownCont;
+
+            let totalUtil = 0;
+            document.querySelectorAll('.a-amt').forEach(el => {
+                totalUtil += (parseFloat(el.value) || 0);
+            });
+
+            document.getElementById('valCost').innerText = formatter.format(totalCost);
+            document.getElementById('valUtil').innerText = formatter.format(totalUtil);
+            
+            let valBox = document.getElementById('validationBox');
+            let valMsg = document.getElementById('valMessage');
+            let genBtn = document.getElementById('generateBtn');
+            
+            let diff = totalCost - totalUtil;
+
+            if (totalCost === 0) {
+                valBox.className = "validator-box validator-error text-center";
+                valMsg.innerText = "Project cost cannot be zero.";
+                genBtn.disabled = true;
+            } else if (diff === 0) {
+                valBox.className = "validator-box validator-success text-center";
+                valMsg.innerText = "✅ Perfectly Balanced!";
+                genBtn.disabled = false;
+            } else {
+                valBox.className = "validator-box validator-error text-center";
+                let diffText = diff > 0 ? `Unallocated Cost: ${formatter.format(diff)}` : `Over-utilized by: ${formatter.format(Math.abs(diff))}`;
+                valMsg.innerText = `❌ Unbalanced. ${diffText} (Difference must be 0)`;
+                genBtn.disabled = true;
+            }
+        }
+
+        // Attach event listeners to entire input section for delegated validation
+        document.getElementById('inputSection').addEventListener('input', validateTotals);
+        window.addEventListener('load', validateTotals);
+        // ------------------------
 
         function toggleDepr(selectEl) {
             let row = selectEl.closest('.asset-row');
@@ -196,6 +237,12 @@
                 deprInput.disabled = false;
                 deprInput.placeholder = 'Depr %';
             }
+            validateTotals();
+        }
+
+        function removeRow(btn) {
+            btn.parentElement.parentElement.remove();
+            validateTotals();
         }
 
         function addAsset() {
@@ -208,10 +255,11 @@
                                 </select>
                              </div>
                              <div class="col-4"><input type="text" class="form-control form-control-sm a-name" placeholder="Item Name"></div>
-                             <div class="col-2"><input type="number" class="form-control form-control-sm a-amt" placeholder="Amount"></div>
+                             <div class="col-2"><input type="number" class="form-control form-control-sm a-amt util-input" placeholder="Amount"></div>
                              <div class="col-2"><input type="number" class="form-control form-control-sm a-rate" placeholder="Depr %"></div>
-                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>`;
+                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>`;
             document.getElementById('assetsList').appendChild(div);
+            validateTotals();
         }
 
         function addExpense() {
@@ -220,13 +268,14 @@
             div.innerHTML = `<div class="col-5"><input type="text" class="form-control form-control-sm e-name" placeholder="Expense Name"></div>
                              <div class="col-3"><input type="number" class="form-control form-control-sm e-amt" placeholder="Amt (Yr 1)"></div>
                              <div class="col-3"><input type="number" class="form-control form-control-sm e-inf" placeholder="Inf %"></div>
-                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="this.parentElement.parentElement.remove()">X</button></div>`;
+                             <div class="col-1 text-end"><button class="btn btn-sm btn-outline-danger btn-remove w-100" onclick="removeRow(this)">X</button></div>`;
             document.getElementById('expensesList').appendChild(div);
         }
 
         function editInputs() {
             document.getElementById('outputSection').classList.add('d-none');
             document.getElementById('inputSection').classList.remove('d-none');
+            validateTotals();
         }
 
         function processReport() {
@@ -328,6 +377,7 @@
             let initialFA = inp.assets.reduce((sum, a) => sum + a.amt, 0);
             
             // To perfectly balance BS from day 1, any excess funds not used in FA or WC stay as cash.
+            // With the new strict validation, prevCash will essentially always be 0 starting out, keeping accounting pure.
             let prevCash = initialInv - initialFA - inp.wc; 
             let prevCap = inp.ownContrib;
             let totalDscr = 0, cumInflow = 0;
