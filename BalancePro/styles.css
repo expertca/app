@@ -29,9 +29,8 @@ body { background-color: #f4f7f6; font-family: 'Segoe UI', system-ui, -apple-sys
     .wizard-content { padding: 15px; }
     .card-body { max-height: none !important; overflow: visible; }
     
-    /* Perfect Mobile Formatting for Financial Reports */
     .statement-page { padding: 20px !important; margin: 0 auto 20px auto !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .fin-table { min-width: 650px; } /* Ensures table maintains structure and allows sideways swipe */
+    .fin-table { min-width: 650px; } 
 }
 
 /* REPORTS CONTAINERS */
@@ -83,31 +82,46 @@ body.theme-bw .fin-table th, body.theme-bw .fin-table td { border-color: #000; }
 body.theme-bw .fin-table th { background-color: #fff !important; color: #000 !important; }
 body.theme-bw .total-border, body.theme-bw .grand-border { border-color: #000 !important; background: #fff;}
 
-/* PDF MODE */
+/* PDF MODE (Applied temporarily during PDF Export via JS) */
 body.pdf-mode .statement-page {
-    padding: 12mm 8mm !important; margin: 0 !important; box-shadow: none !important;
-    border: none !important; border-radius: 0 !important; max-width: none !important;
+    padding: 0 !important; /* Managed by JS Margin options */
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    display: block !important; /* Fixes page break cutoffs */
+    width: 100% !important;
 }
-body.pdf-mode .fin-table { font-size: 8.5pt; margin-bottom: 10px; }
-body.pdf-mode .fin-table th, body.pdf-mode .fin-table td { padding: 3px 4px; }
+body.pdf-mode .fin-table { font-size: 8.5pt; margin-bottom: 10px; width: 100%; }
+body.pdf-mode .fin-table th, body.pdf-mode .fin-table td { padding: 4px 4px; }
 body.pdf-mode .signature-block { margin-top: 30px; }
 
 /* NATIVE PRINT */
 @media print {
-    @page { size: A4 portrait; margin: 6mm; }
-    body { background: #fff; font-size: 8.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* 0 Margin prevents mobile browsers from double-margining and shrinking the table */
+    @page { size: A4 portrait; margin: 0 !important; } 
+    
+    body { background: #fff; font-size: 8.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0 !important; padding: 0 !important; }
     .hide-on-print { display: none !important; }
 
     .statement-page {
-        width: 100% !important; max-width: 100% !important; margin: 0 !important;
-        padding: 10mm 5mm 5mm 5mm !important; box-sizing: border-box !important;
-        box-shadow: none !important; border: none !important; border-radius: 0 !important;
-        page-break-after: always !important; display: block; overflow: visible;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        /* Internal padding provides the safe space */
+        padding: 12mm 8mm 8mm 8mm !important; 
+        box-sizing: border-box !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        page-break-after: always !important;
+        display: block !important; /* CRITICAL for correct page breaks */
     }
     .statement-page:last-of-type { page-break-after: auto !important; }
     
-    .fin-table { font-size: 7.8pt; margin-bottom: 10px; min-width: auto; }
-    .fin-table th, .fin-table td { padding: 3px 3px; }
+    .fin-table { font-size: 8pt; margin-bottom: 10px; width: 100% !important; min-width: 0 !important; }
+    .fin-table th, .fin-table td { padding: 3px 3px; word-break: break-word; }
     .report-title { margin-bottom: 15px; margin-top: 5px; }
-    .signature-block { margin-top: 30px; }
+    .signature-block { margin-top: 30px; page-break-inside: avoid; }
 }
