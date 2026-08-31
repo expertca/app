@@ -24,6 +24,12 @@ const tools = [
         icon: 'table_view'
     },
     {
+        name: 'Balance Pro',
+        description: 'Smart Financial Report',
+        html: 'BalancePro/index.html',
+        icon: 'finance'
+    },
+    {
         name: 'GST Tracker',
         description: 'Quickly track your GST returns',
         html: 'https://mygstportal.onrender.com/login',
