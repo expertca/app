@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Financial Engine</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-light theme-blue">
+
+<!-- AUTHENTICATION GATE -->
+<div id="auth-screen" class="position-fixed w-100 h-100 bg-dark z-3 d-flex justify-content-center align-items-center" style="top:0; left:0; z-index: 10000;">
+    <div class="card p-4 rounded-4 shadow-lg text-center border-0" style="max-width: 350px;">
+        <h4 class="fw-bold mb-3 text-primary">Secure Login</h4>
+        <p class="text-muted small">Enter PIN to access engine<br>(Default: 12345)</p>
+        <input type="password" id="authPin" class="form-control text-center fw-bold fs-4 mb-3 rounded-pill bg-light" placeholder="•••••">
+        <button class="btn btn-primary w-100 fw-bold rounded-pill" onclick="window.checkAuth()">Login</button>
+        <div id="authMsg" class="text-danger small fw-bold mt-2" style="min-height: 20px;"></div>
+    </div>
+</div>
+
+<div id="globalLoader" class="global-loader d-none">
+    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+    <h4 id="loaderText" class="text-primary fw-bold">Processing...</h4>
+</div>
+
+<nav class="navbar navbar-dark bg-primary shadow-sm hide-on-print z-3 position-relative">
+    <div class="container-fluid px-4">
+        <span class="navbar-brand mb-0 h4 fw-bold">Pro Financial Engine</span>
+        <button class="btn btn-light btn-sm fw-bold text-primary px-3 rounded-pill" onclick="window.navExit()">Exit to Dashboard</button>
+    </div>
+</nav>
+
+<!-- VIEW 1: COMPANY LIST -->
+<div id="view-companies" class="view-section container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <h4 class="fw-bold text-dark mb-0">Select or Create Company</h4>
+        <div class="flex-grow-1 mx-md-3" style="max-width: 400px;">
+            <input type="text" id="searchCompanyInput" class="form-control rounded-pill shadow-sm border-0 px-4 py-2" placeholder="🔍 Search Companies..." oninput="window.filterCompanies()">
+        </div>
+        <button class="btn btn-primary shadow-sm fw-bold rounded-pill px-4 py-2" onclick="window.openNewCompanyModal()">+ New Company</button>
+    </div>
+    <div class="row" id="company-cards-container"></div>
+</div>
+
+<!-- VIEW 1.5: COMPANY DASHBOARD -->
+<div id="view-dashboard" class="view-section d-none container py-4">
+    <button class="btn btn-sm btn-outline-secondary mb-3 rounded-pill px-3" onclick="window.switchView('view-companies')">&larr; Back</button>
+    <div class="card shadow border-0 mb-4 bg-dark text-white rounded-4 overflow-hidden">
+        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h2 class="mb-1 fw-bold text-warning" id="dash-comp-name">Company Name</h2>
+                <p class="mb-0 text-white-50 fs-5" id="dash-comp-prop">Entity Details...</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-info text-white fw-bold rounded-pill px-4 py-2 shadow-sm" onclick="window.openProjectionsTool()">Launch Projections Tool</button>
+                <button class="btn btn-light text-dark fw-bold rounded-pill px-4 py-2 shadow-sm" onclick="window.openNewYearModal()">+ Create New Year</button>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="mb-0 fw-bold">Saved Financial Years</h5>
+        <input type="text" id="searchYearInput" class="form-control rounded-pill shadow-sm border-0 px-3 py-1 w-auto" placeholder="🔍 Search Year..." oninput="window.filterYears()">
+    </div>
+    <div class="row" id="dash-years-container"></div>
+</div>
+
+<!-- VIEW 2: DATA WIZARD -->
+<div id="view-wizard" class="view-section d-none hide-on-print">
+    <div class="wizard-layout">
+        <!-- Sidebar Navigation -->
+        <div class="wizard-sidebar shadow-sm">
+            <h6 class="text-muted fw-bold mb-3 px-2 text-uppercase tracking-wide d-none d-md-block">Data Entry Steps</h6>
+            <div id="sidebar-nav">
+                <div class="step-link active" onclick="window.jumpToStep(1)">1. Configuration</div>
+                <div class="step-link" onclick="window.jumpToStep(2)">2. Trading / Direct</div>
+                <div class="step-link" onclick="window.jumpToStep(3)">3. P&L Section</div>
+                <div class="step-link" id="nav-step-4" onclick="window.jumpToStep(4)">4. Capital Account</div>
+                <div class="step-link" onclick="window.jumpToStep(5)">5. Loans (Liab)</div>
+                <div class="step-link" onclick="window.jumpToStep(6)">6. Current Liab</div>
+                <div class="step-link" onclick="window.jumpToStep(7)">7. Other Liab</div>
+                <div class="step-link" onclick="window.jumpToStep(8)">8. Fixed Assets</div>
+                <div class="step-link" onclick="window.jumpToStep(9)">9. Current Assets</div>
+                <div class="step-link" onclick="window.jumpToStep(10)">10. Other Assets</div>
+                <div class="step-link" onclick="window.jumpToStep(11)">11. Statements</div>
+            </div>
+            <hr class="d-none d-md-block">
+            <button class="btn btn-success w-100 fw-bold shadow-sm rounded-pill py-2 mt-2 mt-md-0" onclick="window.generatePreview()">View Reports &rarr;</button>
+            <div id="liveTallyBadge" class="badge bg-secondary fs-6 mt-3 p-2 w-100 shadow-sm rounded-pill border border-dark d-none d-md-block">Tally: Loading...</div>
+        </div>
+
+        <div class="wizard-content">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-header bg-white border-bottom-0 p-4 pb-0 d-flex justify-content-between align-items-center">
+                    <h4 class="text-primary mb-0 fw-bold" id="wizard-company-name">Company Name</h4>
+                    <div id="mobileTallyBadge" class="badge bg-secondary fs-6 p-2 shadow-sm rounded-pill border border-dark d-md-none">Loading...</div>
+                </div>
+                <div class="card-body p-4 pt-3 overflow-auto" style="max-height: calc(100vh - 200px);">
+                    
+                    <div id="step-1" class="wizard-step">
+                        <h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">1. Setup & Configuration</h5>
+                        <div class="row g-4">
+                            <div class="col-md-4"><label class="text-sm fw-bold">Entity Type</label><select id="businessType" class="form-select border-primary" onchange="window.updateEntityLogic()"><option value="proprietorship">Proprietorship</option><option value="partnership">Partnership / LLP</option><option value="company">Company</option></select></div>
+                            <div class="col-md-4"><label class="text-sm fw-bold">Trading Mode</label><select id="tradingMode" class="form-select border-primary" onchange="window.updateTradingMode()"><option value="single">Single (Consolidated)</option><option value="multi">Multi (Itemized)</option></select></div>
+                            <div class="col-md-4"><label class="text-sm fw-bold">Target Net Profit (- for Loss)</label><input type="number" id="targetNP" class="form-control fw-bold border-primary" value="0" oninput="window.markDirty()"></div>
+                            
+                            <div class="col-md-6"><label class="text-sm fw-bold text-secondary">Report Date</label><input type="date" id="reportDate" class="form-control" oninput="window.markDirty()"></div>
+                            <div class="col-md-6"><label class="text-sm fw-bold text-secondary">Report Place</label><input type="text" id="reportPlace" class="form-control" placeholder="e.g. Mumbai" oninput="window.markDirty()"></div>
+                            
+                            <div class="col-12 mt-4 border-top pt-3">
+                                <h6 class="fw-bold mb-3 text-primary">Trading Account Balancer</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Balancing Figure</label><select id="trdBal" class="form-select" onchange="window.updateBalancingUI()"><option value="gp">Gross Profit (Default)</option><option value="clStock">Closing Stock</option><option value="pur">Purchases</option><option value="sales">Sales</option><option value="dirExp">Direct Expenses</option></select></div>
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Target GP Amount</label><input type="number" id="trdTarget" class="form-control fw-bold" value="0" disabled oninput="window.markDirty()"></div>
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Auto-Inject Item Name</label><input type="text" id="trdAutoName" class="form-control" value="Balancing Figure" disabled oninput="window.markDirty()"></div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-4 border-top pt-3">
+                                <h6 class="fw-bold mb-3 text-success">Profit & Loss Balancer</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Balancing Figure</label><select id="pnlBal" class="form-select" onchange="window.updateBalancingUI()"><option value="np">Net Profit / Loss (Default)</option><option value="indExp">Indirect Expenses</option><option value="indInc">Indirect Incomes</option></select></div>
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Target NP Amount</label><input type="number" id="pnlTarget" class="form-control fw-bold" value="0" disabled oninput="window.markDirty()"></div>
+                                    <div class="col-md-4"><label class="text-sm fw-bold">Auto-Inject Item Name</label><input type="text" id="pnlAutoName" class="form-control" value="Misc. Entry" disabled oninput="window.markDirty()"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12 mt-4 border-top pt-3">
+                                <h6 class="fw-bold mb-3">Signatories & Auth</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-3"><label class="text-sm fw-bold">Signatory 1 Name</label><input type="text" id="sig1Name" class="form-control" oninput="window.markDirty()"></div>
+                                    <div class="col-md-3"><label class="text-sm fw-bold">Signatory 1 Title</label><input type="text" id="sig1Title" class="form-control" placeholder="e.g. Proprietor" oninput="window.markDirty()"></div>
+                                    <div class="col-md-3"><label class="text-sm fw-bold">Signatory 2 Name</label><input type="text" id="sig2Name" class="form-control" oninput="window.markDirty()"></div>
+                                    <div class="col-md-3"><label class="text-sm fw-bold">Signatory 2 Title</label><input type="text" id="sig2Title" class="form-control" placeholder="e.g. Partner" oninput="window.markDirty()"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step-2" class="wizard-step d-none"><h5 id="step-2-title" class="mb-4 border-bottom pb-2 fw-bold text-dark">2. Trading / Direct Section</h5><div class="alert alert-info py-2 small fw-bold mb-3 shadow-sm border-0">Note: The system automatically detects a Trading entity if you enter Opening Stock, Purchases, or Closing Stock. Otherwise, it functions as a pure Service entity.</div><div id="accordion-step-2"></div></div>
+                    <div id="step-3" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">3. P&L / Indirect Section</h5><div class="alert alert-info py-2 small fw-bold mb-3 shadow-sm border-0">Note: Depreciation will dynamically compute and append here during reporting.</div><div class="accordion" id="accordion-step-3"></div></div>
+                    
+                    <div id="step-4" class="wizard-step d-none">
+                        <h5 class="mb-4 border-bottom pb-2 fw-bold text-dark" id="capitalStepTitle">4. Capital Account</h5>
+                        <div id="capitalProprietorDiv" class="row g-3 bg-light p-4 rounded-4 border shadow-sm">
+                            <div class="col-md-4"><label class="text-sm fw-bold">Opening Capital</label><input type="number" id="capOpening" class="form-control fw-bold" value="0" oninput="window.markDirty()"></div>
+                            <div class="col-md-4"><label class="text-sm fw-bold text-success">+ Additional Capital</label><input type="number" id="capAdditional" class="form-control fw-bold" value="0" oninput="window.markDirty()"></div>
+                            <div class="col-md-4"><label class="text-sm fw-bold text-danger">- Drawings</label><input type="number" id="capDrawings" class="form-control fw-bold" value="0" oninput="window.markDirty()"></div>
+                        </div>
+                        <div id="capitalPartnerDiv" class="d-none"><div class="accordion" id="accordion-step-4"></div></div>
+                    </div>
+
+                    <div id="step-5" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">5. Loans & Advances (Liability)</h5><div class="accordion" id="accordion-step-5"></div></div>
+                    <div id="step-6" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">6. Current Liabilities</h5><div class="accordion" id="accordion-step-6"></div></div>
+                    <div id="step-7" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">7. Other Current Liabilities</h5><div class="accordion" id="accordion-step-7"></div></div>
+                    <div id="step-8" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">8. Fixed Assets</h5><div class="accordion" id="accordion-step-8"></div></div>
+                    
+                    <div id="step-9" class="wizard-step d-none">
+                        <h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">9. Current Assets</h5>
+                        <div class="card mb-4 border-info shadow-sm rounded-4"><div class="card-body p-3 d-flex align-items-center gap-3 bg-light rounded-4">
+                            <label class="fw-bold text-sm mb-0 ms-2 text-nowrap">Cash in Hand</label>
+                            <input type="number" id="cashBalance" class="form-control fw-bold text-primary" value="0" oninput="window.updateCash(this.value)">
+                        </div></div>
+                        <div class="accordion" id="accordion-step-9"></div>
+                    </div>
+                    
+                    <div id="step-10" class="wizard-step d-none"><h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">10. Other Current Assets</h5><div class="accordion" id="accordion-step-10"></div></div>
+
+                    <div id="step-11" class="wizard-step d-none">
+                        <h5 class="mb-4 border-bottom pb-2 fw-bold text-dark">11. Report Formatting & Configurations</h5>
+                        <div class="row g-4">
+                            <!-- Padding Formatting -->
+                            <div class="col-12">
+                                <h6 class="fw-bold text-primary mb-3">Visual Padding</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6 d-flex align-items-center bg-light p-3 rounded border">
+                                        <label class="fw-bold text-dark w-100 mb-0">Minimum P&L Rows</label>
+                                        <input type="number" id="padPnl" class="form-control w-25 text-center fw-bold" value="5" oninput="window.markDirty()">
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-center bg-light p-3 rounded border">
+                                        <label class="fw-bold text-dark w-100 mb-0">B/S Extra Blank Rows</label>
+                                        <input type="number" id="padBS" class="form-control w-25 text-center fw-bold" value="0" oninput="window.markDirty()">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Toggles -->
+                            <div class="col-md-6">
+                                <div class="list-group shadow-sm">
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Sundry Debtors Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schDebtors" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Bank Accounts Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schBank" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Current Assets Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schCurrentAssets" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3" id="wrapper-schPartners" style="display: none;">
+                                        <span class="fw-bold text-dark">Partners Capital Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schPartners" onchange="window.markDirty()"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="list-group shadow-sm">
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Current Liabilities Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schCurrentLiab" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Loans (Liabilities) Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schLoansLiab" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-light p-3">
+                                        <span class="fw-bold text-dark">Loans (Assets) Schedule</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schLoansAsset" onchange="window.markDirty()"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="list-group shadow-sm border-primary">
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-white p-3">
+                                        <span class="fw-bold text-primary">Fixed Assets: Generate Isolated Schedule Annexure</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schFA" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-white p-3">
+                                        <span class="fw-bold text-primary">Fixed Assets: Show 'Sub Total' line</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schFaSub" onchange="window.markDirty()"></div>
+                                    </label>
+                                    <label class="list-group-item d-flex justify-content-between align-items-center bg-white p-3">
+                                        <span class="fw-bold text-primary">Fixed Assets: Show 'Addition' line even if zero</span>
+                                        <div class="form-check form-switch m-0"><input class="form-check-input fs-5" type="checkbox" id="schZeroAdd" onchange="window.markDirty()"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VIEW 3: REPORT PREVIEW -->
+<div id="view-preview" class="view-section d-none container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 hide-on-print border-bottom pb-3 flex-wrap gap-2">
+        <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm" onclick="window.switchView('view-wizard')">&larr; Edit</button>
+        
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <div class="form-check form-switch m-0 ms-2 me-3 hide-on-mobile">
+                <input class="form-check-input" type="checkbox" id="gridToggle" checked onchange="window.toggleGrid(this.checked)">
+                <label class="form-check-label fw-bold text-dark text-sm">Gridlines</label>
+            </div>
+            <select class="form-select shadow-sm fw-bold border-secondary w-auto rounded-pill theme-selector hide-on-mobile" onchange="window.toggleTheme(this.value)">
+                <option value="blue">Theme: Corporate Blue</option>
+                <option value="green">Theme: Emerald Green</option>
+                <option value="purple">Theme: Royal Purple</option>
+                <option value="bw">Theme: Crisp B&W</option>
+            </select>
+            
+            <button class="btn btn-info text-white fw-bold shadow-sm rounded-pill px-3" onclick="window.showTrialBalance()">TB Validate</button>
+            <button class="btn btn-primary fw-bold shadow-sm rounded-pill px-3" onclick="window.saveToCloud()">Save Data</button>
+            <button class="btn btn-success fw-bold shadow-sm rounded-pill px-3" onclick="window.exportExcel()">Excel</button>
+            <button class="btn btn-dark fw-bold shadow-sm rounded-pill px-3" onclick="window.printReport()">Print</button>
+            <button class="btn btn-danger fw-bold shadow-sm rounded-pill px-3" onclick="window.exportPDF()">PDF</button>
+        </div>
+    </div>
+    <div id="reportContainer" class="d-flex flex-column align-items-center w-100"></div>
+</div>
+
+<!-- VIEW 4: PROJECTIONS TOOL -->
+<div id="view-projections" class="view-section d-none container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 hide-on-print border-bottom pb-3 flex-wrap gap-2">
+        <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm" onclick="window.switchView('view-dashboard')">&larr; Dashboard</button>
+        <h4 class="fw-bold mb-0 text-primary">Dynamic Projections Tool</h4>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch m-0 ms-2 me-3 hide-on-mobile">
+                <input class="form-check-input" type="checkbox" checked onchange="window.toggleGrid(this.checked)">
+                <label class="form-check-label fw-bold text-dark text-sm">Gridlines</label>
+            </div>
+            <button class="btn btn-success fw-bold shadow-sm rounded-pill px-3" onclick="window.exportProjExcel()">Excel</button>
+            <button class="btn btn-dark fw-bold shadow-sm rounded-pill px-3" onclick="window.printReport()">Print</button>
+            <button class="btn btn-danger fw-bold shadow-sm rounded-pill px-3" onclick="window.exportProjPDF()">PDF</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 hide-on-print border-0 rounded-4 bg-white">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3"><label class="fw-bold text-muted small text-uppercase">Base Year (Actuals)</label><select id="projBaseYear" class="form-select fw-bold border-primary" onchange="window.loadProjBase()"></select></div>
+                <div class="col-md-2"><label class="fw-bold text-muted small text-uppercase">Projection Yrs</label><input type="number" id="projYears" class="form-control fw-bold" value="3" onchange="window.buildProjInputs()"></div>
+                <div class="col-md-2"><label class="fw-bold text-muted small text-uppercase">Growth %</label><input type="number" id="projGrowth" class="form-control fw-bold text-success" value="5" onchange="window.generateProjections()"></div>
+                <div class="col-md-2"><label class="fw-bold text-muted small text-uppercase">Inflation %</label><input type="number" id="projInflation" class="form-control fw-bold text-danger" value="2" onchange="window.generateProjections()"></div>
+                <div class="col-md-3"><button class="btn btn-primary w-100 fw-bold rounded-pill" onclick="window.generateProjections()">Render Projection</button></div>
+            </div>
+            <div id="projInputsContainer" class="mt-4"></div>
+        </div>
+    </div>
+    <div id="projReportContainer" class="d-flex flex-column align-items-center w-100"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal fade" id="uiModal" tabindex="-1" style="z-index: 1055;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white border-0 py-3 rounded-top-4">
+                <h6 class="modal-title fw-bold" id="uiModalTitle">Message</h6>
+            </div>
+            <div class="modal-body p-4" id="uiModalBody"></div>
+            <div class="modal-footer border-0 py-2 bg-light rounded-bottom-4" id="uiModalFooter"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tbModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-dark text-white border-0 py-3"><h5 class="modal-title fw-bold">Trial Balance Validate</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-0">
+            <table class="table table-bordered table-sm mb-0"><tbody id="tb-body"></tbody><tfoot class="fw-bold bg-light" id="tb-foot"></tfoot></table>
+        </div>
+      </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newCompanyModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-primary text-white border-0 py-3"><h5 class="modal-title fw-bold">New Company</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body row g-3 p-4">
+        <div class="col-12"><label class="fw-bold small text-muted">Company ID</label><input type="text" id="newCompId" class="form-control fw-bold text-primary" readonly></div>
+        <div class="col-12"><label class="fw-bold small text-muted">Entity Type</label><select id="newCompType" class="form-select fw-bold"><option value="proprietorship">Proprietorship</option><option value="partnership">Partnership/LLP</option><option value="company">Company</option></select></div>
+        <div class="col-12"><label class="fw-bold small text-muted">Business Name (Optional for Prop.)</label><input type="text" id="newCompName" class="form-control" placeholder="M/s Example Traders"></div>
+        <div class="col-12"><label class="fw-bold small text-muted">Proprietor/Director Name</label><input type="text" id="newProprietor" class="form-control" placeholder="Mr. John Doe"></div>
+      </div>
+      <div class="modal-footer bg-light border-0"><button type="button" class="btn btn-primary fw-bold rounded-pill px-4" onclick="window.initNewCompany()">Create Company</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addYearModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-dark text-white border-0 py-3"><h5 class="modal-title fw-bold">Create New Year</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-4">
+            <label class="fw-bold small text-muted">Financial Year</label>
+            <input type="text" id="newYear" class="form-control mb-3" placeholder="e.g. 2024-25">
+            <label class="fw-bold small text-muted">Year Ending Date</label>
+            <input type="text" id="newYearEnd" class="form-control mb-4" placeholder="e.g. 31-03-2025">
+            <label class="fw-bold small text-primary">Import Old Balances (Zeros P&L)</label>
+            <select id="importYearSelect" class="form-select border-primary fw-bold" onchange="window.handleImportSelect()">
+                <option value="none">Start Fresh (No Import)</option>
+            </select>
+        </div>
+        <div class="modal-footer bg-light border-0"><button type="button" class="btn btn-dark fw-bold rounded-pill px-4" onclick="window.createNewYear()">Start Wizard</button></div>
+      </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="script.js"></script>
+</body>
+</html>
