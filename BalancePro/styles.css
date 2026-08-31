@@ -1,0 +1,113 @@
+body { background-color: #f4f7f6; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; color: #212529; }
+.text-sm { font-size: 0.85rem; }
+.modal-backdrop.show { opacity: 0.5; }
+
+/* Tightened letter spacing and tabular-nums to prevent monospace overflow */
+.amount { font-family: 'Consolas', 'Courier New', monospace; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: -0.2px; }
+
+.global-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.92); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+
+/* Dashboard Cards */
+.hover-card { cursor: pointer; transition: all 0.2s ease; border-radius: 12px; }
+.hover-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important; border-color: #0d6efd; }
+.year-card { background: #fff; border-radius: 12px; border-left: 6px solid #0d6efd; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+/* WIZARD SIDEBAR LAYOUT */
+.wizard-layout { display: flex; min-height: calc(100vh - 76px); align-items: stretch;}
+.wizard-sidebar { width: 280px; background: #fff; border-right: 1px solid #e9ecef; padding: 25px 20px; z-index: 2;}
+.wizard-content { flex: 1; padding: 30px; background: #f4f7f6; overflow: hidden;}
+.step-link { display: block; padding: 12px 18px; color: #495057; font-size: 0.95rem; font-weight: 500; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: 0.2s ease;}
+.step-link:hover { background: #f8f9fa; color: #0d6efd;}
+.step-link.active { background: #0d6efd; color: #fff; font-weight: 700; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);}
+
+/* MOBILE UI RESPONSIVENESS */
+@media (max-width: 768px) {
+    .wizard-layout { flex-direction: column; }
+    .wizard-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e9ecef; padding: 15px; }
+    #sidebar-nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding-bottom: 5px; }
+    .step-link { white-space: nowrap; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 0; }
+    .wizard-content { padding: 15px; }
+    .card-body { max-height: none !important; overflow: visible; }
+    
+    /* Perfect Mobile Formatting for Financial Reports */
+    .statement-page { padding: 20px !important; margin: 0 auto 20px auto !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .fin-table { min-width: 650px; } /* Ensures table maintains structure and allows sideways swipe */
+}
+
+/* REPORTS CONTAINERS */
+.statement-page { background: #ffffff; width: 100%; max-width: 1100px; padding: 50px; margin: 0 auto 30px auto; box-sizing: border-box; box-shadow: 0 5px 25px rgba(0,0,0,0.08); border-radius: 12px; display: flex; flex-direction: column; page-break-after: always; }
+.statement-page:last-of-type { page-break-after: auto; margin-bottom: 0; }
+.report-header { text-align: center; font-weight: 800; font-size: 1.5rem; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;}
+.report-title { text-align: center; font-size: 1.15rem; font-weight: 700; text-decoration: underline; text-transform: uppercase; margin-bottom: 25px; margin-top: 10px; }
+
+/* SHARED TABLE ARCHITECTURE */
+.fin-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.92rem; margin-bottom: 20px; }
+.fin-table th, .fin-table td { border: 1px solid #ced4da; padding: 6px 8px; vertical-align: middle; line-height: 1.3; overflow-wrap: break-word; }
+.fin-table th { text-align: center; font-weight: 700; }
+
+/* OPTIONAL NO-GRID MODE FOR CLEAN PRINTING */
+.fin-table.no-grid th, .fin-table.no-grid td { border: none !important; }
+.fin-table.no-grid thead th { border-bottom: 2px solid #000 !important; border-top: 2px solid #000 !important; }
+.fin-table.no-grid .total-border td, .fin-table.no-grid .grand-border td { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; }
+
+/* 4-COLUMN TABLE (Trading & P&L) */
+.table-4col th:nth-child(1), .table-4col th:nth-child(3) { width: 35%; }
+.table-4col th:nth-child(2), .table-4col th:nth-child(4) { width: 15%; }
+
+/* 6-COLUMN TABLE (Balance Sheet) */
+.table-6col th:nth-child(1), .table-6col th:nth-child(4) { width: 24%; }
+.table-6col th:nth-child(2), .table-6col th:nth-child(3), .table-6col th:nth-child(5), .table-6col th:nth-child(6) { width: 13%; }
+
+/* Typography */
+.group-hdr { font-weight: 700; text-transform: uppercase; padding-top: 4px; padding-bottom: 2px;}
+.no-upper { text-transform: none !important; }
+.item-name { padding-left: 10px; }
+.sub-item-name { padding-left: 28px; font-size: 0.9em; color: #495057; }
+.total-border { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; font-weight: 800; background: #fafafa; }
+.grand-border { border-top: 1px solid #000 !important; border-bottom: 3px double #000 !important; font-weight: 800; background: #fafafa; }
+
+/* Signatures & Schedules */
+.schedule-box { margin-top: 30px; border: 1px solid #ddd; padding: 20px; border-radius: 8px; overflow-x: auto; }
+.schedule-title { font-weight: bold; font-size: 1.05rem; margin-bottom: 15px; text-decoration: underline; }
+.signature-block { margin-top: 50px; padding-top: 15px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 0.95rem; page-break-inside: avoid; }
+
+/* MULTI-COLOR THEMES */
+body:not(.theme-bw) .fin-table th { color: #fff; border-color: #dee2e6; }
+body.theme-blue .fin-table th { background-color: #0d6efd; border-color: #0b5ed7;}
+body.theme-green .fin-table th { background-color: #198754; border-color: #157347;}
+body.theme-purple .fin-table th { background-color: #6f42c1; border-color: #59339d;}
+body:not(.theme-bw) .fin-table td { border: 1px solid #dee2e6; }
+
+body.theme-bw .statement-page { box-shadow: none; border: 1px solid #ccc; border-radius: 0;}
+body.theme-bw .fin-table th, body.theme-bw .fin-table td { border-color: #000; }
+body.theme-bw .fin-table th { background-color: #fff !important; color: #000 !important; }
+body.theme-bw .total-border, body.theme-bw .grand-border { border-color: #000 !important; background: #fff;}
+
+/* PDF MODE */
+body.pdf-mode .statement-page {
+    padding: 12mm 8mm !important; margin: 0 !important; box-shadow: none !important;
+    border: none !important; border-radius: 0 !important; max-width: none !important;
+}
+body.pdf-mode .fin-table { font-size: 8.5pt; margin-bottom: 10px; }
+body.pdf-mode .fin-table th, body.pdf-mode .fin-table td { padding: 3px 4px; }
+body.pdf-mode .signature-block { margin-top: 30px; }
+
+/* NATIVE PRINT */
+@media print {
+    @page { size: A4 portrait; margin: 6mm; }
+    body { background: #fff; font-size: 8.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .hide-on-print { display: none !important; }
+
+    .statement-page {
+        width: 100% !important; max-width: 100% !important; margin: 0 !important;
+        padding: 10mm 5mm 5mm 5mm !important; box-sizing: border-box !important;
+        box-shadow: none !important; border: none !important; border-radius: 0 !important;
+        page-break-after: always !important; display: block; overflow: visible;
+    }
+    .statement-page:last-of-type { page-break-after: auto !important; }
+    
+    .fin-table { font-size: 7.8pt; margin-bottom: 10px; min-width: auto; }
+    .fin-table th, .fin-table td { padding: 3px 3px; }
+    .report-title { margin-bottom: 15px; margin-top: 5px; }
+    .signature-block { margin-top: 30px; }
+}
