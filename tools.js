@@ -27,7 +27,7 @@ const tools = [
         name: 'Balance Pro',
         description: 'Smart Financial Report',
         html: 'BalancePro/index.html',
-        icon: 'finance'
+        icon: 'analytics'
     },
     {
         name: 'GST Tracker',
