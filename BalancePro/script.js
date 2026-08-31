@@ -103,7 +103,6 @@ window.checkAuth = async function() {
     }
 }
 
-// Wrapper for all backend GET calls to handle expired sessions elegantly
 async function secureFetch(actionParams) {
     let token = sessionStorage.getItem('authToken');
     let res = await fetch(`${weburl}?sessionToken=${token}&${actionParams}`);
@@ -117,7 +116,6 @@ async function secureFetch(actionParams) {
     }
     return data;
 }
-
 
 window.getIsService = function(data = finData) {
     const s = (arr) => arr ? arr.reduce((a, b) => a + (parseFloat(b.amount)||0), 0) : 0;
@@ -1275,18 +1273,17 @@ window.updateReports = function() {
     
     eMath.pIndI.forEach(i => yr.crPnl.push({ title: i.name, total: i.amount, forceItems: false }));
 
-    // Apply P&L padding
+    let npTitle = (bType === 'proprietorship') ? 'Net Profit transferred to Capital Account' : 'Net Profit c/f';
+    let nlTitle = (bType === 'proprietorship') ? 'Net Loss transferred to Capital Account' : 'Net Loss c/f';
+    if (eMath.autoTargetNP >= 0) { yr.drPnl.push({ title: npTitle, total: eMath.autoTargetNP, bold: true }); } 
+    else { yr.crPnl.push({ title: nlTitle, total: Math.abs(eMath.autoTargetNP), bold: true }); }
+
     let pnlPad = parseInt(baseConfig.padPnl) || 5;
     let pnlDrRows = yr.drPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'To').length, 0);
     while(pnlDrRows < pnlPad - 1) { yr.drPnl.push({ isBlank: true }); pnlDrRows++; }
 
     let pnlCrRows = yr.crPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'By').length, 0);
     while(pnlCrRows < pnlPad - 1) { yr.crPnl.push({ isBlank: true }); pnlCrRows++; }
-
-    let npTitle = (bType === 'proprietorship') ? 'Net Profit transferred to Capital Account' : 'Net Profit c/f';
-    let nlTitle = (bType === 'proprietorship') ? 'Net Loss transferred to Capital Account' : 'Net Loss c/f';
-    if (eMath.autoTargetNP >= 0) { yr.drPnl.push({ title: npTitle, total: eMath.autoTargetNP, bold: true }); } 
-    else { yr.crPnl.push({ title: nlTitle, total: Math.abs(eMath.autoTargetNP), bold: true }); }
 
     let showApprop = false;
     let pCalc = { remunTotal: 0, intTotal: 0, divProfit: eMath.autoTargetNP, closingCap: 0 };
@@ -1788,31 +1785,39 @@ window.exportExcel = function() {
 window.printReport = function() { window.print(); }
 
 window.exportPDF = function() {
+    showLoader("Generating PDF...");
     document.body.classList.add('pdf-mode');
-    const opt = { 
-        margin: [5, 5, 5, 5], 
-        filename: `${currentCompany.name}_Financials.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-    };
-    html2pdf().set(opt).from(document.getElementById('reportContainer')).save().then(() => {
-        document.body.classList.remove('pdf-mode');
-    });
+    setTimeout(() => {
+        const opt = { 
+            margin: [10, 8, 10, 8], 
+            filename: `${currentCompany.name}_Financials.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+        };
+        html2pdf().set(opt).from(document.getElementById('reportContainer')).save().then(() => {
+            document.body.classList.remove('pdf-mode');
+            hideLoader();
+        });
+    }, 150);
 }
 
 window.exportProjPDF = function() {
+    showLoader("Generating PDF...");
     document.body.classList.add('pdf-mode');
-    const opt = { 
-        margin: [5, 5, 5, 5], 
-        filename: `${currentCompany.name}_Projections.pdf`, 
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-    };
-    html2pdf().set(opt).from(document.getElementById('projReportContainer')).save().then(() => {
-        document.body.classList.remove('pdf-mode');
-    });
+    setTimeout(() => {
+        const opt = { 
+            margin: [10, 8, 10, 8], 
+            filename: `${currentCompany.name}_Projections.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+        };
+        html2pdf().set(opt).from(document.getElementById('projReportContainer')).save().then(() => {
+            document.body.classList.remove('pdf-mode');
+            hideLoader();
+        });
+    }, 150);
 }
 
 window.showTrialBalance = function() {
