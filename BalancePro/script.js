@@ -74,7 +74,7 @@ const incrementYearStr = (dateStr, addYears) => {
     return dateStr;
 };
 
-// --- AUTHENTICATION GATE (BACKEND CONNECTED) ---
+// --- AUTHENTICATION GATE ---
 window.checkAuth = async function() {
     let pin = document.getElementById('authPin').value;
     if(!pin) return;
@@ -116,6 +116,7 @@ async function secureFetch(actionParams) {
     }
     return data;
 }
+
 
 window.getIsService = function(data = finData) {
     const s = (arr) => arr ? arr.reduce((a, b) => a + (parseFloat(b.amount)||0), 0) : 0;
@@ -1278,12 +1279,13 @@ window.updateReports = function() {
     if (eMath.autoTargetNP >= 0) { yr.drPnl.push({ title: npTitle, total: eMath.autoTargetNP, bold: true }); } 
     else { yr.crPnl.push({ title: nlTitle, total: Math.abs(eMath.autoTargetNP), bold: true }); }
 
+    // Apply P&L padding
     let pnlPad = parseInt(baseConfig.padPnl) || 5;
     let pnlDrRows = yr.drPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'To').length, 0);
-    while(pnlDrRows < pnlPad - 1) { yr.drPnl.push({ isBlank: true }); pnlDrRows++; }
+    while(pnlDrRows < pnlPad) { yr.drPnl.unshift({ isBlank: true }); pnlDrRows++; }
 
     let pnlCrRows = yr.crPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'By').length, 0);
-    while(pnlCrRows < pnlPad - 1) { yr.crPnl.push({ isBlank: true }); pnlCrRows++; }
+    while(pnlCrRows < pnlPad) { yr.crPnl.unshift({ isBlank: true }); pnlCrRows++; }
 
     let showApprop = false;
     let pCalc = { remunTotal: 0, intTotal: 0, divProfit: eMath.autoTargetNP, closingCap: 0 };
@@ -1403,8 +1405,8 @@ window.updateReports = function() {
 
     let bsPad = parseInt(baseConfig.padBS) || 0;
     for(let i=0; i<bsPad; i++) {
-        yr.liab.push({ isBlank: true });
-        yr.asset.push({ isBlank: true });
+        yr.liab.unshift({ isBlank: true });
+        yr.asset.unshift({ isBlank: true });
     }
 
     let tLiab = closingCap + sumArr(baseData.loansAdvancesLiab) + totalCL;
@@ -1569,10 +1571,10 @@ window.generateProjections = function() {
 
         let pnlPad = parseInt(baseConfig.padPnl) || 5;
         let pnlDrRows = yr.drPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'To').length, 0);
-        while(pnlDrRows < pnlPad - 1) { yr.drPnl.push({ isBlank: true }); pnlDrRows++; }
+        while(pnlDrRows < pnlPad - 1) { yr.drPnl.unshift({ isBlank: true }); pnlDrRows++; }
 
         let pnlCrRows = yr.crPnl.reduce((acc, b) => acc + flattenFourColBlock(b, 'By').length, 0);
-        while(pnlCrRows < pnlPad - 1) { yr.crPnl.push({ isBlank: true }); pnlCrRows++; }
+        while(pnlCrRows < pnlPad - 1) { yr.crPnl.unshift({ isBlank: true }); pnlCrRows++; }
 
         let showApprop = false;
         let pCalc = { remunTotal: 0, intTotal: 0, divProfit: eMath.autoTargetNP, closingCap: 0 };
@@ -1697,8 +1699,8 @@ window.generateProjections = function() {
 
         let bsPad = parseInt(baseConfig.padBS) || 0;
         for(let i=0; i<bsPad; i++) {
-            yr.liab.push({ isBlank: true });
-            yr.asset.push({ isBlank: true });
+            yr.liab.unshift({ isBlank: true });
+            yr.asset.unshift({ isBlank: true });
         }
 
         let tLiab = closingCap + sumArr(baseData.loansAdvancesLiab) + totalCL;
@@ -1782,43 +1784,59 @@ window.exportExcel = function() {
     XLSX.writeFile(wb, `${currentCompany.name}_Financials.xlsx`);
 }
 
-window.printReport = function() { window.print(); }
-
-window.exportPDF = function() {
-    showLoader("Generating PDF...");
+window.executePrintOrPDF = function(type) {
+    let isProj = !document.getElementById('view-projections').classList.contains('d-none');
+    let targetEl = isProj ? document.getElementById('projReportContainer') : document.getElementById('reportContainer');
+    
+    // Viewport hack to force mobile browsers to render at desktop scaling
+    let metaViewport = document.querySelector('meta[name="viewport"]');
+    let originalViewport = metaViewport.getAttribute('content');
+    metaViewport.setAttribute('content', 'width=1050, initial-scale=1');
+    
     document.body.classList.add('pdf-mode');
+
     setTimeout(() => {
-        const opt = { 
-            margin: [10, 8, 10, 8], 
-            filename: `${currentCompany.name}_Financials.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-        };
-        html2pdf().set(opt).from(document.getElementById('reportContainer')).save().then(() => {
-            document.body.classList.remove('pdf-mode');
-            hideLoader();
-        });
-    }, 150);
+        if(type === 'print') {
+            window.print();
+            setTimeout(() => {
+                metaViewport.setAttribute('content', originalViewport);
+                document.body.classList.remove('pdf-mode');
+            }, 1500);
+        } else if (type === 'pdf') {
+            // Provide guidance that Native Print -> "Save as PDF" is vastly superior
+            document.getElementById('uiModalTitle').innerText = 'Best PDF Quality';
+            document.getElementById('uiModalBody').innerHTML = `<p class="mb-0 fw-bold">For crisp, text-selectable PDFs, it is highly recommended to use the <b class="text-primary">PRINT</b> button instead and select <b>"Save as PDF"</b> from your device's native print menu.</p>`;
+            document.getElementById('uiModalFooter').innerHTML = `
+                <button type="button" class="btn btn-outline-secondary px-3 rounded-pill fw-bold" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary px-4 rounded-pill fw-bold" onclick="window.runLegacyPDF()">Use Legacy PDF Export</button>`;
+            
+            // Bind the legacy fallback to a temporary window function
+            window.runLegacyPDF = function() {
+                bootstrap.Modal.getInstance(document.getElementById('uiModal')).hide();
+                showLoader("Generating PDF...");
+                const opt = { 
+                    margin: [10, 10, 10, 10], 
+                    filename: `${currentCompany.name}_Financials.pdf`, 
+                    image: { type: 'jpeg', quality: 0.98 }, 
+                    html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1050 }, 
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: 'css' }
+                };
+                html2pdf().set(opt).from(targetEl).save().then(() => {
+                    metaViewport.setAttribute('content', originalViewport);
+                    document.body.classList.remove('pdf-mode');
+                    hideLoader();
+                });
+            };
+            new bootstrap.Modal(document.getElementById('uiModal')).show();
+        }
+    }, 400); // 400ms delay gives the browser DOM time to visually reflow to the new 1050px width before printing
 }
 
-window.exportProjPDF = function() {
-    showLoader("Generating PDF...");
-    document.body.classList.add('pdf-mode');
-    setTimeout(() => {
-        const opt = { 
-            margin: [10, 8, 10, 8], 
-            filename: `${currentCompany.name}_Projections.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 1000 }, 
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-        };
-        html2pdf().set(opt).from(document.getElementById('projReportContainer')).save().then(() => {
-            document.body.classList.remove('pdf-mode');
-            hideLoader();
-        });
-    }, 150);
-}
+window.printReport = () => window.executePrintOrPDF('print');
+window.exportPDF = () => window.executePrintOrPDF('pdf');
+window.exportProjPDF = () => window.executePrintOrPDF('pdf');
+
 
 window.showTrialBalance = function() {
     const bType = document.getElementById('businessType').value;
