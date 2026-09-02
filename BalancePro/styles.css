@@ -94,7 +94,7 @@ body.pdf-mode .signature-block { margin-top: 30px; }
 
 /* NATIVE PRINT */
 @media print {
-    @page { size: A4 portrait; margin: 6mm; }
+    @page { size: A4 portrait; margin: 0; }
     body { background: #fff; font-size: 8.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .hide-on-print { display: none !important; }
 
