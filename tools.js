@@ -35,4 +35,10 @@ const tools = [
         html: 'https://mygstportal.onrender.com/login',
         icon: 'content_paste_search'
     },
+    {
+        name: 'FamLedger',
+        description: 'Godholi Family Accounts',
+        html: 'FamLedger/index.html',
+        icon: 'analytics'
+    },
 ];
