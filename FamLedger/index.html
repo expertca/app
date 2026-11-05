@@ -411,36 +411,6 @@
         let currentAuthResolver = null;
         let storedToken = localStorage.getItem('fam_token');
 
-        function executeLogin(e) {
-            e.preventDefault();
-            const u = document.getElementById('loginUsername').value, p = document.getElementById('loginPassword').value, btn = document.getElementById('loginBtn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
-            google.script.run.withSuccessHandler(resStr => {
-                const res = JSON.parse(resStr); btn.innerHTML = 'Unlock Ledger';
-                if (res.error) { document.getElementById('loginError').innerText = res.error; } 
-                else if (res.token) {
-                    localStorage.setItem('fam_token', res.token); storedToken = res.token;
-                    document.getElementById('authGate').classList.add('hidden'); document.getElementById('loginError').innerText = '';
-                    loadAllData(false);
-                }
-            }).doLogin(u, p);
-        }
-
-        function executeReAuth(e) {
-            e.preventDefault();
-            const p = document.getElementById('reauthPassword').value, btn = document.getElementById('reauthBtn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-            google.script.run.withSuccessHandler(resStr => {
-                const res = JSON.parse(resStr); btn.innerHTML = 'Resume Action';
-                if (res.error) { document.getElementById('reauthError').innerText = res.error; } 
-                else if (res.token) {
-                    localStorage.setItem('fam_token', res.token); storedToken = res.token;
-                    closeModal('reAuthGate'); document.getElementById('reauthError').innerText = '';
-                    if(currentAuthResolver) { currentAuthResolver(res.token); currentAuthResolver = null; }
-                }
-            }).doLogin(userCtx.username, p);
-        }
-
         function logout() {
             localStorage.removeItem('fam_token'); storedToken = null;
             document.getElementById('authGate').classList.remove('hidden');
@@ -449,7 +419,67 @@
 
         // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-xgQueG_Xu8jSc7BmsguewZqpFoOIKe-31Kbr7ai_WkzCgfQxtyWxZgbYznhG14Rd/exec";
+        // Ensure this is pasted at the top of your script section!
+       
 
+        function executeLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUsername').value;
+            const p = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ method: 'doLogin', token: null, args: [u, p] })
+            })
+            .then(response => response.json())
+            .then(res => {
+                btn.innerHTML = 'Unlock Ledger';
+                if (res.error) { 
+                    document.getElementById('loginError').innerText = res.error; 
+                } else if (res.token) {
+                    localStorage.setItem('fam_token', res.token); 
+                    storedToken = res.token;
+                    document.getElementById('authGate').classList.add('hidden'); 
+                    document.getElementById('loginError').innerText = '';
+                    loadAllData(false);
+                }
+            })
+            .catch(err => {
+                btn.innerHTML = 'Unlock Ledger';
+                document.getElementById('loginError').innerText = "Network connection failed.";
+            });
+        }
+
+        function executeReAuth(e) {
+            e.preventDefault();
+            const p = document.getElementById('reauthPassword').value;
+            const btn = document.getElementById('reauthBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ method: 'doLogin', token: null, args: [userCtx.username, p] })
+            })
+            .then(response => response.json())
+            .then(res => {
+                btn.innerHTML = 'Resume Action';
+                if (res.error) { 
+                    document.getElementById('reauthError').innerText = res.error; 
+                } else if (res.token) {
+                    localStorage.setItem('fam_token', res.token); 
+                    storedToken = res.token;
+                    closeModal('reAuthGate'); 
+                    document.getElementById('reauthError').innerText = '';
+                    if(currentAuthResolver) { currentAuthResolver(res.token); currentAuthResolver = null; }
+                }
+            })
+            .catch(err => {
+                btn.innerHTML = 'Resume Action';
+                document.getElementById('reauthError').innerText = "Network connection failed.";
+            });
+        }
         function apiCall(methodName, ...args) {
             return new Promise((resolve, reject) => {
                 if (!storedToken && methodName === 'getAppData') return reject(new Error("No Token"));
