@@ -415,9 +415,9 @@
             if(window.innerWidth < 768 && document.getElementById('mobile-overlay').classList.contains('active')) toggleSidebar();
         }
 
-        // --- AUTH, TOKENS & API WRAPPER ---
-        // SCRIPT URL GOES HERE (If Migrating to GitHub Pages, replace with Web App URL)
-        // const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+                // --- AUTH, TOKENS & API WRAPPER ---
+        // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-xgQueG_Xu8jSc7BmsguewZqpFoOIKe-31Kbr7ai_WkzCgfQxtyWxZgbYznhG14Rd/exec";
         
         let currentAuthResolver = null;
         let storedToken = localStorage.getItem('fam_token');
@@ -426,30 +426,50 @@
             e.preventDefault();
             const u = document.getElementById('loginUsername').value, p = document.getElementById('loginPassword').value, btn = document.getElementById('loginBtn');
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
-            google.script.run.withSuccessHandler(resStr => {
-                const res = JSON.parse(resStr); btn.innerHTML = 'Unlock Ledger';
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ method: 'doLogin', token: null, args: [u, p] })
+            })
+            .then(response => response.json())
+            .then(res => {
+                btn.innerHTML = 'Unlock Ledger';
                 if (res.error) { document.getElementById('loginError').innerText = res.error; } 
                 else if (res.token) {
                     localStorage.setItem('fam_token', res.token); storedToken = res.token;
                     document.getElementById('authGate').classList.add('hidden'); document.getElementById('loginError').innerText = '';
                     loadAllData(false);
                 }
-            }).doLogin(u, p);
+            })
+            .catch(err => {
+                btn.innerHTML = 'Unlock Ledger';
+                document.getElementById('loginError').innerText = "Network connection failed.";
+            });
         }
 
         function executeReAuth(e) {
             e.preventDefault();
             const p = document.getElementById('reauthPassword').value, btn = document.getElementById('reauthBtn');
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-            google.script.run.withSuccessHandler(resStr => {
-                const res = JSON.parse(resStr); btn.innerHTML = 'Resume Action';
+            
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ method: 'doLogin', token: null, args: [userCtx.username, p] })
+            })
+            .then(response => response.json())
+            .then(res => {
+                btn.innerHTML = 'Resume Action';
                 if (res.error) { document.getElementById('reauthError').innerText = res.error; } 
                 else if (res.token) {
                     localStorage.setItem('fam_token', res.token); storedToken = res.token;
                     closeModal('reAuthGate'); document.getElementById('reauthError').innerText = '';
                     if(currentAuthResolver) { currentAuthResolver(res.token); currentAuthResolver = null; }
                 }
-            }).doLogin(userCtx.username, p);
+            })
+            .catch(err => {
+                btn.innerHTML = 'Resume Action';
+                document.getElementById('reauthError').innerText = "Network connection failed.";
+            });
         }
 
         function logout() {
@@ -462,19 +482,23 @@
             return new Promise((resolve, reject) => {
                 if (!storedToken && methodName === 'getAppData') return reject(new Error("No Token"));
                 const attemptCall = (tokenToUse) => {
-                    google.script.run.withSuccessHandler(resStr => {
-                        try {
-                            const res = JSON.parse(resStr);
-                            if (res.error === "SESSION_EXPIRED") {
-                                document.getElementById('reauthPassword').value = ''; openModal('reAuthGate');
-                                new Promise(resReAuth => { currentAuthResolver = resReAuth; }).then(newToken => attemptCall(newToken)); 
-                            } else if (res.error) { reject(new Error(res.error)); } else { resolve(res); }
-                        } catch(e) { reject(e); }
-                    }).withFailureHandler(reject)[methodName](tokenToUse, ...args);
+                    fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ method: methodName, token: tokenToUse, args: args })
+                    })
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.error === "SESSION_EXPIRED") {
+                            document.getElementById('reauthPassword').value = ''; openModal('reAuthGate');
+                            new Promise(resReAuth => { currentAuthResolver = resReAuth; }).then(newToken => attemptCall(newToken)); 
+                        } else if (res.error) { reject(new Error(res.error)); } else { resolve(res); }
+                    })
+                    .catch(err => reject(new Error("Network Error: Could not reach the server.")));
                 };
                 attemptCall(storedToken);
             });
         }
+
 
         async function executeApiAction(e, methodName, payloadStr, optionalArg = null) {
             if(e) e.preventDefault(); const form = e.target, btn = form.querySelector('button[type="submit"]'), originalText = btn.innerHTML;
