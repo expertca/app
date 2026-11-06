@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamLedger Pro - Secure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .nav-item.active { background-color: #e0e7ff; color: #4338ca; border-right: 4px solid #4338ca; font-weight: 600; }
+        .nav-item { border-right: 4px solid transparent; color: #475569; }
+        .nav-item:hover:not(.active) { background-color: #f8fafc; color: #334155; }
+        .modal { transition: opacity 0.2s ease, transform 0.2s ease; }
+        .modal.hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+        .modal.visible { opacity: 1; pointer-events: auto; transform: scale(1); }
+        #mobile-overlay.active { display: block; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-800">
+
+    <!-- Primary Login Gate -->
+    <div id="authGate" class="fixed inset-0 bg-slate-900/80 z-[300] flex items-center justify-center p-4">
+        <div class="text-center p-8 bg-white rounded-3xl shadow-2xl max-w-sm w-full">
+            <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-lock text-2xl text-indigo-600"></i></div>
+            <h2 class="text-2xl font-black text-slate-800 mb-2 tracking-tight">FamLedger Login</h2>
+            <p id="loginError" class="text-rose-500 mb-6 text-sm font-medium h-4"></p>
+            <form onsubmit="executeLogin(event)">
+                <input type="text" id="loginUsername" placeholder="Username" required class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 mb-4 text-center font-bold outline-none focus:border-indigo-500 transition-colors">
+                <input type="password" id="loginPassword" placeholder="Password" required class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 mb-6 text-center tracking-[0.2em] font-black outline-none focus:border-indigo-500 transition-colors">
+                <button type="submit" id="loginBtn" class="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all flex justify-center items-center gap-2"><span>Unlock Ledger</span></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Re-Auth Modal -->
+    <div id="reAuthGate" class="modal hidden fixed inset-0 bg-slate-900/90 z-[999] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="text-center p-8 bg-white rounded-3xl shadow-2xl max-w-sm w-full border-4 border-amber-400">
+            <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-hourglass-end text-2xl text-amber-600"></i></div>
+            <h2 class="text-xl font-black text-slate-800 mb-2">Session Expired</h2>
+            <p class="text-slate-500 mb-6 text-xs font-medium">To protect your unsaved data, please re-enter your password to seamlessly resume your task.</p>
+            <p id="reauthError" class="text-rose-500 mb-4 text-xs font-bold h-4"></p>
+            <form onsubmit="executeReAuth(event)">
+                <input type="password" id="reauthPassword" placeholder="Password" required class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 mb-6 text-center tracking-[0.2em] font-black outline-none focus:border-amber-500 transition-colors">
+                <button type="submit" id="reauthBtn" class="w-full bg-amber-500 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all">Resume Action</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Custom Confirm Modal -->
+    <div id="modal-confirm" class="modal hidden fixed inset-0 bg-slate-900/60 z-[1000] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500 text-2xl"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3 class="text-lg font-black text-slate-800 mb-2" id="confirm-title">Are you sure?</h3>
+                <p class="text-sm text-slate-500 font-medium" id="confirm-msg">This action cannot be undone.</p>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button id="btn-confirm-cancel" class="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100">Cancel</button>
+                <button id="btn-confirm-ok" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-rose-600 shadow-md hover:bg-rose-700">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-[100] transform transition-all duration-300 translate-x-full opacity-0 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3">
+        <i class="fas fa-check-circle text-emerald-400 text-xl" id="toast-icon"></i>
+        <div><h4 class="font-bold text-sm" id="toast-title">Success</h4><p class="text-xs text-slate-300" id="toast-msg">...</p></div>
+    </div>
+
+    <div id="mobile-overlay" class="hidden fixed inset-0 bg-slate-900/50 z-30 md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 w-64 bg-white flex flex-col h-full shadow-2xl md:shadow-lg z-40 shrink-0 border-r border-slate-200">
+        <div class="p-6 flex justify-between items-center border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-md"><i class="fas fa-landmark text-lg"></i></div>
+                <div><h1 class="text-lg font-black text-slate-800 tracking-tight">FamLedger</h1><p class="text-[10px] text-indigo-600 uppercase tracking-widest font-bold">Secure V4</p></div>
+            </div>
+            <button class="md:hidden text-slate-400" onclick="toggleSidebar()"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <nav class="flex-1 py-4 overflow-y-auto no-scrollbar flex flex-col gap-1">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item active w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-chart-pie w-5 text-center"></i> Dashboard</button>
+            <button onclick="switchTab('members')" id="nav-members" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-users w-5 text-center"></i> Directory & Security</button>
+            <div class="px-6 py-2 mt-2"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accounting</span></div>
+            <button onclick="switchTab('contributions')" id="nav-contributions" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-bullseye w-5 text-center"></i> Contributions (Dues)</button>
+            <button onclick="switchTab('donations')" id="nav-donations" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-gift w-5 text-center text-rose-500"></i> Donations & Sponsors</button>
+            <button onclick="switchTab('liabilities')" id="nav-liabilities" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-hand-holding-water w-5 text-center text-amber-600"></i> Advances & Payables</button>
+            <button onclick="switchTab('ledger')" id="nav-ledger" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-book w-5 text-center"></i> Main Ledger</button>
+            <button onclick="switchTab('reports')" id="nav-reports" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm"><i class="fas fa-file-invoice-dollar w-5 text-center"></i> Financial Reports</button>
+            <div class="px-6 py-2 mt-2 admin-only"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System</span></div>
+            <button onclick="switchTab('masterdata')" id="nav-masterdata" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm admin-only"><i class="fas fa-cogs w-5 text-center"></i> Master Data</button>
+            <button onclick="switchTab('audit')" id="nav-audit" class="nav-item w-full flex items-center gap-3 px-6 py-3 text-left transition-colors text-sm admin-only"><i class="fas fa-shield-alt w-5 text-center"></i> Audit Log</button>
+        </nav>
+        <div class="p-4 border-t border-slate-100 bg-slate-50">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold"><i class="fas fa-user text-xs"></i></div>
+                <div class="overflow-hidden flex-1">
+                    <p class="text-[10px] text-slate-500 uppercase font-bold" id="user-role-badge">Role</p>
+                    <p class="text-sm font-semibold text-slate-800 truncate" id="user-name">Guest</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-full text-xs text-slate-500 font-bold hover:text-rose-600 transition-colors border border-slate-200 rounded py-2 bg-white shadow-sm"><i class="fas fa-sign-out-alt mr-1"></i> Lock App</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden w-full">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 shrink-0 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-slate-600 p-2" onclick="toggleSidebar()"><i class="fas fa-bars text-xl"></i></button>
+                <h2 id="page-title" class="text-lg md:text-xl font-bold text-slate-800">Dashboard</h2>
+                <div id="sync-loader" class="hidden items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider"><i class="fas fa-sync-alt fa-spin"></i> Syncing</div>
+            </div>
+            <button onclick="loadAllData(false)" class="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"><i class="fas fa-redo-alt mr-1"></i> Refresh</button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar relative w-full">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="space-y-6 block">
+                <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                    <div onclick="openAccountDrilldown(1)" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col cursor-pointer hover:border-emerald-300 transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Cash <i class="fas fa-search ml-1"></i></span><h3 id="dash-cash" class="text-xl font-black text-slate-800 mt-1">₹0</h3>
+                    </div>
+                    <div onclick="openAccountDrilldown(2)" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col cursor-pointer hover:border-blue-300 transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Bank <i class="fas fa-search ml-1"></i></span><h3 id="dash-bank" class="text-xl font-black text-slate-800 mt-1">₹0</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Expenses</span><h3 id="dash-expenses" class="text-xl font-black text-rose-600 mt-1">₹0</h3>
+                    </div>
+                    <div onclick="switchTab('liabilities')" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col cursor-pointer hover:border-amber-300 transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Advances/Payables</span><h3 id="dash-payables" class="text-xl font-black text-amber-600 mt-1">₹0</h3>
+                    </div>
+                    <div onclick="switchTab('contributions')" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col cursor-pointer hover:border-indigo-300 transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contrib. Received</span><h3 id="dash-contrib" class="text-xl font-black text-indigo-600 mt-1">₹0</h3>
+                    </div>
+                    <div onclick="switchTab('donations')" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col cursor-pointer hover:border-fuchsia-300 transition-all">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Donations Rec.</span><h3 id="dash-donation" class="text-xl font-black text-fuchsia-600 mt-1">₹0</h3>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col max-h-96">
+                        <h3 class="font-bold text-slate-700 mb-4 shrink-0"><i class="fas fa-history mr-2 text-indigo-400"></i>Recent Activity</h3>
+                        <div class="overflow-y-auto no-scrollbar flex-1">
+                            <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400 sticky top-0"><tr class="border-b border-slate-100"><th class="py-2 px-2">Date</th><th class="py-2 px-2">Particulars (Voucher)</th><th class="py-2 px-2 text-right">Amount</th></tr></thead><tbody id="dash-recent-tbody" class="divide-y divide-slate-50"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col max-h-96">
+                        <h3 class="font-bold text-slate-700 mb-4 shrink-0"><i class="fas fa-calendar-alt mr-2 text-fuchsia-400"></i>Event Financial Summary</h3>
+                        <div class="overflow-y-auto no-scrollbar flex-1">
+                            <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400 sticky top-0"><tr class="border-b border-slate-100"><th class="py-2 px-2">Event</th><th class="py-2 px-2 text-right text-emerald-500">Income</th><th class="py-2 px-2 text-right text-rose-500">Expense</th><th class="py-2 px-2 text-right">Surplus/Def</th></tr></thead><tbody id="dash-events-tbody" class="divide-y divide-slate-50"></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: MEMBERS -->
+            <div id="view-members" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <input type="text" id="search-member" placeholder="Search Directory..." class="w-full md:w-64 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none shadow-sm" oninput="renderMembers()">
+                    <button onclick="openAddMemberModal()" class="admin-only w-full md:w-auto bg-indigo-600 text-white text-sm font-medium py-2 px-5 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors"><i class="fas fa-user-plus mr-1"></i> Add Member</button>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto flex-1 no-scrollbar w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider text-[10px]"><tr class="border-b"><th class="px-6 py-4">ID</th><th class="px-6 py-4">Name & Email</th><th class="px-6 py-4">System Auth</th><th class="px-6 py-4 text-center admin-only">Manage</th></tr></thead><tbody id="member-tbody" class="divide-y divide-slate-50"></tbody></table>
+                </div>
+            </div>
+
+            <!-- VIEW: EXPECTED CONTRIBUTIONS -->
+            <div id="view-contributions" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-xl flex gap-2"><i class="fas fa-info-circle mt-0.5"></i><p><b>Dues Only:</b> This compares Expected vs Paid Contributions.</p></div>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <select id="contrib-event-filter" class="w-full md:w-auto border rounded-xl px-4 py-2 text-sm bg-white dropdown-events" onchange="renderContributions()"><option value="">-- All Events --</option></select>
+                    <div class="flex gap-2 admin-only w-full md:w-auto">
+                        <button onclick="openBulkContribModal()" class="flex-1 bg-white border text-slate-700 text-sm font-medium py-2 px-5 rounded-xl shadow-sm hover:bg-slate-50 transition-colors"><i class="fas fa-tasks mr-1"></i> Bulk Assign</button>
+                        <button onclick="openModal('modal-contrib'); document.getElementById('form-contrib').reset(); document.getElementById('exp-id').value='';" class="flex-1 bg-indigo-600 text-white text-sm font-medium py-2 px-5 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors"><i class="fas fa-plus mr-1"></i> Set Due</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto flex-1 no-scrollbar w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]"><tr class="border-b"><th class="px-6 py-4">Event</th><th class="px-6 py-4 text-right">Expected (Due)</th><th class="px-6 py-4 text-right">Cont. Paid</th><th class="px-6 py-4 text-right">Balance Memo</th></tr></thead><tbody id="contrib-tbody" class="divide-y divide-slate-50"></tbody></table>
+                </div>
+            </div>
+
+            <!-- VIEW: DONATIONS -->
+            <div id="view-donations" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="flex justify-between items-center gap-4"><select id="donation-event-filter" class="w-full md:w-auto border rounded-xl px-4 py-2 text-sm bg-white dropdown-events" onchange="renderDonations()"><option value="">-- All Events --</option></select></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col w-full">
+                    <div class="p-4 bg-fuchsia-50 border-b border-fuchsia-100 flex justify-between items-center shrink-0"><h3 class="font-bold text-fuchsia-800 uppercase tracking-wider text-xs">Total Donations</h3><h3 class="font-black text-fuchsia-700 text-xl" id="donations-total-display">₹0</h3></div>
+                    <div class="flex-1 overflow-x-auto no-scrollbar w-full"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]"><tr class="border-b"><th class="px-6 py-4">Date</th><th class="px-6 py-4">Sponsor/Member</th><th class="px-6 py-4">Event</th><th class="px-6 py-4">Notes</th><th class="px-6 py-4 text-right">Amount</th></tr></thead><tbody id="donations-tbody" class="divide-y divide-slate-50"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- VIEW: ADVANCES & PAYABLES -->
+            <div id="view-liabilities" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="bg-amber-50 text-amber-800 text-xs p-3 rounded-xl flex gap-2"><i class="fas fa-handshake mt-0.5"></i><p><b>Member Advances:</b> Track overpayments and settle via Cash/Bank or set-off.</p></div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto flex-1 no-scrollbar w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]"><tr class="border-b"><th class="px-6 py-4">Member Name</th><th class="px-6 py-4 text-right">Total Advanced</th><th class="px-6 py-4 text-right">Settled/Adjusted</th><th class="px-6 py-4 text-right">Net Payable</th></tr></thead><tbody id="liabilities-tbody" class="divide-y divide-slate-50"></tbody></table>
+                </div>
+            </div>
+
+            <!-- VIEW: LEDGER (I&E) -->
+            <div id="view-ledger" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                        <select id="ledger-filter-type" class="w-full md:w-auto border rounded-xl px-4 py-2 text-sm bg-white" onchange="renderLedger()"><option value="All">All Entries</option><option value="1">Receipts (Dr)</option><option value="2">Payments (Cr)</option><option value="3">Journals</option></select>
+                        <select id="ledger-filter-event" class="w-full md:w-auto border rounded-xl px-4 py-2 text-sm bg-white dropdown-events" onchange="renderLedger()"><option value="">All Events</option></select>
+                    </div>
+                    <div class="flex flex-wrap gap-2 admin-only w-full md:w-auto">
+                        <button onclick="openSmartVoucher('receipt')" class="flex-1 bg-emerald-600 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-emerald-700 transition-colors"><i class="fas fa-arrow-down mr-1"></i> Receipt</button>
+                        <button onclick="openSmartVoucher('payment')" class="flex-1 bg-rose-600 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-rose-700 transition-colors"><i class="fas fa-arrow-up mr-1"></i> Payment</button>
+                        <button onclick="openSmartVoucher('journal')" class="flex-1 bg-indigo-600 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-indigo-700 transition-colors"><i class="fas fa-random mr-1"></i> Journal</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto flex-1 no-scrollbar w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]"><tr class="border-b"><th class="px-6 py-4">Date</th><th class="px-6 py-4">Voucher</th><th class="px-6 py-4">Dr/Cr Summary</th><th class="px-6 py-4">Particulars</th><th class="px-6 py-4 text-right">Amount</th><th class="px-6 py-4 text-center admin-only">Edit</th></tr></thead><tbody id="ledger-tbody" class="divide-y divide-slate-50"></tbody></table>
+                </div>
+            </div>
+
+            <!-- VIEW: REPORTS -->
+            <div id="view-reports" class="hidden space-y-6 h-full flex flex-col w-full">
+                <!-- Report Settings Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 shrink-0">
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        <div class="w-full md:w-1/5">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">From Date</label>
+                            <input type="date" id="report-from" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 bg-white outline-none focus:border-indigo-500 transition-colors" onchange="runReport()">
+                        </div>
+                        <div class="w-full md:w-1/5">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">To Date</label>
+                            <input type="date" id="report-to" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 bg-white outline-none focus:border-indigo-500 transition-colors" onchange="runReport()">
+                        </div>
+                        <div class="flex-1 w-full">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Report Generator</label>
+                            <select id="reportSelector" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 bg-white outline-none focus:border-indigo-500 transition-colors" onchange="onReportTypeChange()">
+                                <option value="">-- Choose Report --</option>
+                                <option value="bs">Balance Sheet (Assets & Liab)</option>
+                                <option value="ine">Income & Expenditure Statement</option>
+                                <option value="stmt">Account / Bank Statement</option>
+                                <option value="adv-stmt">Member Advance Statement</option>
+                            </select>
+                        </div>
+                        <div id="reportParamWrapper" class="flex-1 w-full hidden">
+                            <label id="reportParamLabel" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Parameters</label>
+                            <select id="reportParam" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 bg-white outline-none focus:border-indigo-500 transition-colors" onchange="runReport()"></select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Report Canvas -->
+                <div class="flex-1 overflow-x-auto font-mono text-sm relative w-full">
+                    <div id="report-container" class="min-w-[600px] h-full flex flex-col"><div class="h-full flex flex-col items-center justify-center text-slate-400 bg-white border border-dashed border-slate-200 rounded-2xl"><i class="fas fa-file-invoice-dollar text-4xl mb-3 text-slate-200"></i><p>Select report settings to generate.</p></div></div>
+                </div>
+            </div>
+
+            <!-- VIEW: MASTER DATA & AUDIT -->
+            <div id="view-masterdata" class="hidden space-y-6 w-full">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+                    <div class="bg-white rounded-2xl border shadow-sm flex flex-col max-h-[70vh]"><div class="p-4 bg-slate-50 flex justify-between items-center border-b"> <h3 class="font-bold text-slate-700">Accounts</h3><button onclick="openModal('modal-account')" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold"><i class="fas fa-plus"></i></button></div><ul id="list-accounts" class="divide-y divide-slate-50 overflow-y-auto p-2"></ul></div>
+                    <div class="bg-white rounded-2xl border shadow-sm flex flex-col max-h-[70vh]"><div class="p-4 bg-slate-50 flex justify-between items-center border-b"> <h3 class="font-bold text-slate-700">I&E Categories</h3><button onclick="openModal('modal-category')" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold"><i class="fas fa-plus"></i></button></div><ul id="list-categories" class="divide-y divide-slate-50 overflow-y-auto p-2"></ul></div>
+                    <div class="bg-white rounded-2xl border shadow-sm flex flex-col max-h-[70vh]"><div class="p-4 bg-slate-50 flex justify-between items-center border-b"> <h3 class="font-bold text-slate-700">Events</h3><button onclick="openModal('modal-event')" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold"><i class="fas fa-plus"></i></button></div><ul id="list-events" class="divide-y divide-slate-50 overflow-y-auto p-2"></ul></div>
+                    <div class="bg-white rounded-2xl border shadow-sm flex flex-col max-h-[70vh]"><div class="p-4 bg-slate-50 flex justify-between items-center border-b"> <h3 class="font-bold text-slate-700">Custom Fields</h3><button onclick="openModal('modal-config')" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold"><i class="fas fa-plus"></i></button></div><ul id="list-configs" class="divide-y divide-slate-50 overflow-y-auto p-2"></ul></div>
+                </div>
+            </div>
+
+            <div id="view-audit" class="hidden space-y-4 h-full flex flex-col w-full">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto flex-1 no-scrollbar w-full">
+                    <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]"><tr class="border-b"><th class="px-6 py-4">Timestamp</th><th class="px-6 py-4">Action</th><th class="px-6 py-4">User</th><th class="px-6 py-4">Table</th><th class="px-6 py-4">Record ID</th></tr></thead><tbody id="audit-tbody" class="divide-y divide-slate-50"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Smart Voucher Modal -->
+    <div id="modal-smart-voucher" class="modal hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+        <form id="form-smart-voucher" class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh]" onsubmit="executeApiAction(event, 'saveVoucher', buildVoucherPayload())">
+            <div class="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div><h3 class="font-black text-lg text-slate-800" id="smart-vouch-title">Post Transaction</h3><p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1" id="smart-vouch-subtitle">Multi-Line Entry</p></div>
+                <button type="button" onclick="closeModal('modal-smart-voucher')" class="text-slate-400 hover:text-rose-500"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-4 bg-slate-100 border-b border-slate-200 flex flex-col md:flex-row gap-4 shrink-0">
+                <input type="hidden" id="smart-vouch-mode" value=""><input type="hidden" id="smart-vouch-edit-id" value="">
+                <div class="w-full md:w-auto"><label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" id="smart-vouch-date" required class="w-full border rounded-xl px-4 py-2 text-sm bg-white shadow-sm outline-none"></div>
+                <div id="smart-vouch-main-acc-wrapper" class="w-full md:w-64"><label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="smart-vouch-acc-label">Account</label><select id="smart-vouch-main-acc" class="w-full border rounded-xl px-4 py-2 text-sm bg-white shadow-sm outline-none dropdown-accounts"></select></div>
+                <div class="flex-1"><label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Master Memo / Narration</label><input type="text" id="smart-vouch-memo" placeholder="Description..." class="w-full border rounded-xl px-4 py-2 text-sm bg-white shadow-sm outline-none"></div>
+            </div>
+            <div class="flex-1 overflow-x-auto bg-slate-50 p-4 no-scrollbar">
+                <table class="w-full text-left text-sm min-w-[700px]">
+                    <thead class="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b-2 border-slate-200"><tr><th id="smart-vouch-col-type" class="pb-2 w-20 hidden">Type</th><th id="smart-vouch-col-acc" class="pb-2 hidden">Account</th><th class="pb-2">Category (Head)</th><th class="pb-2">Event</th><th class="pb-2">Member / Payer</th><th class="pb-2 text-right">Amount (₹)</th><th class="pb-2 text-center w-10"></th></tr></thead>
+                    <tbody id="smart-vouch-lines" class="divide-y divide-slate-200/60"></tbody>
+                </table>
+                <button type="button" onclick="addSmartVoucherLine(document.getElementById('smart-vouch-mode').value)" class="mt-4 text-xs font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 border border-indigo-100 transition-colors"><i class="fas fa-plus mr-1"></i> Add Line</button>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-white flex flex-col md:flex-row justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] rounded-b-2xl gap-4">
+                <div class="flex gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
+                    <div class="text-right hidden" id="smart-vouch-dr-box"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Debit</p><p class="text-lg font-black text-emerald-600 font-mono" id="smart-vouch-tot-dr">₹0.00</p></div>
+                    <div class="text-right hidden" id="smart-vouch-cr-box"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Credit</p><p class="text-lg font-black text-rose-600 font-mono" id="smart-vouch-tot-cr">₹0.00</p></div>
+                    <div class="text-right"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="smart-vouch-tot-label">Total Amount</p><p class="text-xl font-black font-mono text-slate-800" id="smart-vouch-tot-amt">₹0.00</p></div>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto items-center">
+                    <button type="button" id="smart-vouch-delete-btn" class="hidden flex-1 md:flex-none px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition-all" title="Delete Voucher completely"><i class="fas fa-trash-alt mr-1"></i> Delete</button>
+                    <button type="button" onclick="closeModal('modal-smart-voucher')" class="flex-1 md:flex-none px-6 py-2.5 text-sm font-medium rounded-xl hover:bg-slate-100 border border-slate-200">Cancel</button>
+                    <button type="submit" id="smart-vouch-submit-btn" disabled class="flex-1 md:flex-none px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl shadow-md disabled:opacity-50 transition-all">Save Voucher</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modals: General & Details -->
+    <div id="modal-account-list" class="modal hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+            <div class="p-5 border-b bg-slate-50 flex justify-between"><h3 class="font-bold text-lg" id="drilldown-title">Account Balances</h3><button type="button" onclick="closeModal('modal-account-list')"><i class="fas fa-times text-slate-400"></i></button></div>
+            <div class="p-4 overflow-y-auto flex-1 bg-slate-50/50"><table class="w-full text-left text-sm"><thead class="text-[10px] font-bold text-slate-400 uppercase border-b"><tr><th class="pb-2">Account Name</th><th class="pb-2 text-right">Balance</th><th class="pb-2 text-center">Action</th></tr></thead><tbody id="drilldown-tbody" class="divide-y divide-slate-100"></tbody></table></div>
+        </div>
+    </div>
+    
+    <div id="modal-details" class="modal hidden fixed inset-0 bg-slate-900/40 z-[70] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b bg-slate-50 flex justify-between items-center"><h3 class="font-bold text-slate-800" id="details-title">Details</h3><button type="button" onclick="closeModal('modal-details')"><i class="fas fa-times text-slate-400 hover:text-rose-500 transition-colors"></i></button></div>
+            <div class="p-0 overflow-x-auto flex-1 bg-slate-50/50"><div id="details-content" class="text-xs text-slate-600 whitespace-nowrap min-w-[500px]"></div></div>
+            <div class="p-4 border-t flex justify-end items-center bg-slate-50">
+                <button type="button" onclick="closeModal('modal-details')" class="px-5 py-2 text-sm bg-white border border-slate-200 rounded-xl hover:bg-slate-100 font-medium transition-colors">Close Details</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals: Member Directory vs Security Role -->
+    <div id="modal-member" class="modal hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+        <form id="form-member" class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col" onsubmit="executeApiAction(event, 'saveGenericRecord', buildMemberPayload(), 'Members')">
+            <div class="p-5 border-b bg-slate-50 flex justify-between"><h3 class="font-bold text-lg">Directory Profile</h3><button type="button" onclick="closeModal('modal-member')"><i class="fas fa-times text-slate-400"></i></button></div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <input type="hidden" id="mem-id" data-col="ID">
+                <div><label class="block text-xs font-bold text-slate-500">Full Name</label><input type="text" id="mem-name" data-col="Name" required class="w-full border rounded-xl px-4 py-2 text-sm"></div>
+                <div><label class="block text-xs font-bold text-slate-500">Email</label><input type="email" id="mem-email" data-col="Email" class="w-full border rounded-xl px-4 py-2 text-sm"></div>
+                <div><label class="block text-xs font-bold text-slate-500">Directory Status</label><select id="mem-status" data-col="Status" class="w-full border rounded-xl px-4 py-2 text-sm"><option value="1">Active</option><option value="0">Disabled</option></select></div>
+                <div class="border-t pt-4 mt-2"><label class="block text-xs font-bold text-slate-500 mb-2">Custom Fields</label><div id="mem-config-container" class="space-y-3"></div></div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-3"><button type="button" onclick="closeModal('modal-member')" class="px-5 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors">Cancel</button><button type="submit" class="px-5 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Save Directory Info</button></div>
+        </form>
+    </div>
+
+    <div id="modal-user" class="modal hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4">
+        <form id="form-user" class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col border-2 border-indigo-400" onsubmit="executeApiAction(event, 'saveUserAuth', buildUserPayload())">
+            <div class="p-5 border-b bg-indigo-50 flex justify-between"><h3 class="font-bold text-lg text-indigo-900"><i class="fas fa-shield-alt mr-2 text-indigo-600"></i>Manage System Access</h3><button type="button" onclick="closeModal('modal-user')"><i class="fas fa-times text-indigo-400 hover:text-indigo-600"></i></button></div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <input type="hidden" id="user-member-id">
+                <p class="text-xs text-slate-500 mb-4">You are granting system login capabilities to: <strong id="user-member-name-label" class="text-slate-800"></strong></p>
+                <div><label class="block text-xs font-bold text-slate-500">Username (Required to login)</label><input type="text" id="user-username" required class="w-full border rounded-xl px-4 py-2 text-sm font-bold text-indigo-600"></div>
+                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Set / Reset Password</label>
+                    <input type="password" id="user-newpass" placeholder="Leave blank to keep current password" class="w-full border rounded-lg px-3 py-2 text-sm font-mono bg-white">
+                </div>
+                <div><label class="block text-xs font-bold text-slate-500">System Role</label><select id="user-role" class="w-full border rounded-xl px-4 py-2 text-sm"><option value="1">Member (Viewer)</option><option value="2">Administrator</option></select></div>
+                <div id="user-locked-warning" class="hidden bg-rose-50 text-rose-700 text-xs font-bold p-3 rounded-lg border border-rose-200">
+                    <i class="fas fa-lock mr-1"></i> Account is locked out due to failed attempts. <br>
+                    <label class="mt-2 flex items-center gap-2 cursor-pointer"><input type="checkbox" id="user-unlock"> Check this box to Unlock account now</label>
+                </div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-3"><button type="button" onclick="closeModal('modal-user')" class="px-5 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors">Cancel</button><button type="submit" class="px-5 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Save Security Config</button></div>
+        </form>
+    </div>
+
+    <!-- Modals: Expected & Bulk & Master -->
+    <div id="modal-contrib" class="modal hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4"><form id="form-contrib" class="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col" onsubmit="executeApiAction(event, 'saveGenericRecord', buildExpectedPayload(), 'Expected')"><div class="p-4 border-b bg-slate-50"><h3 class="font-bold text-slate-800">Set Single Due</h3></div><div class="p-5 space-y-4"><input type="hidden" id="exp-id"><div><label class="block text-xs font-bold text-slate-500">Date</label><input type="date" id="exp-date" required class="w-full border rounded-xl px-3 py-2"></div><div><label class="block text-xs font-bold text-slate-500">Member</label><select id="exp-member" required class="w-full border rounded-xl px-3 py-2 dropdown-members"></select></div><div><label class="block text-xs font-bold text-slate-500">Event</label><select id="exp-event" required class="w-full border rounded-xl px-3 py-2 dropdown-events"></select></div><div><label class="block text-xs font-bold text-slate-500">Expected (₹)</label><input type="number" step="0.01" id="exp-amount" required class="w-full border rounded-xl px-3 py-2 font-bold text-indigo-700"></div></div><div class="p-4 border-t bg-slate-50 flex justify-end gap-2"><button type="button" onclick="closeModal('modal-contrib')" class="px-4 py-2 text-sm rounded-xl hover:bg-slate-200 transition-colors">Cancel</button><button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Save</button></div></form></div>
+    <div id="modal-bulk-contrib" class="modal hidden fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4"><form id="form-bulk-contrib" class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]" onsubmit="executeApiAction(event, 'saveBulkExpected', buildBulkExpectedPayload())"><div class="p-4 border-b bg-slate-50 flex justify-between"><h3 class="font-bold text-slate-800">Bulk Assign Dues</h3><button type="button" onclick="closeModal('modal-bulk-contrib')"><i class="fas fa-times text-slate-400"></i></button></div><div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-b"><div><label class="block text-xs font-bold text-slate-500">Date</label><input type="date" id="bulk-date" required class="w-full border rounded-lg px-3 py-1.5"></div><div><label class="block text-xs font-bold text-slate-500">Event</label><select id="bulk-event" required class="w-full border rounded-lg px-3 py-1.5 dropdown-events"></select></div><div><label class="block text-xs font-bold text-slate-500">Amount per Member</label><input type="number" step="0.01" id="bulk-amount" required class="w-full border rounded-lg px-3 py-1.5 font-bold"></div></div><div class="p-0 overflow-y-auto flex-1 bg-slate-50"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-100 text-slate-500 font-bold uppercase text-[10px] sticky top-0"><tr><th class="px-4 py-2 w-10 text-center"><input type="checkbox" onchange="document.querySelectorAll('.bulk-cb').forEach(cb => cb.checked = this.checked)" checked></th><th class="px-4 py-2">Select Members</th></tr></thead><tbody id="bulk-tbody" class="bg-white"></tbody></table></div><div class="p-4 border-t flex justify-end gap-2"><button type="button" onclick="closeModal('modal-bulk-contrib')" class="px-4 py-2 text-sm rounded-xl hover:bg-slate-100 transition-colors">Cancel</button><button type="submit" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Assign</button></div></form></div>
+    
+    <div id="modal-account" class="modal hidden fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center p-4"><form class="bg-white w-64 rounded-xl shadow-xl overflow-hidden" onsubmit="executeApiAction(event, 'saveGenericRecord', buildMasterPayload(event), 'Accounts')"><input type="hidden" id="acc-id" data-col="ID"><div class="p-4 space-y-3"><h3 class="font-bold text-sm text-slate-800">Add Account</h3><input type="text" id="acc-Name" data-col="Name" placeholder="Name" required class="w-full border rounded-lg px-3 py-2 text-sm"><select id="acc-Type" data-col="Type" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="1">Cash</option><option value="2">Bank</option></select><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="closeModal('modal-account')" class="px-3 py-1.5 text-xs rounded hover:bg-slate-200 transition-colors">Cancel</button><button type="submit" class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">Save</button></div></div></form></div>
+    <div id="modal-category" class="modal hidden fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center p-4"><form class="bg-white w-64 rounded-xl shadow-xl overflow-hidden" onsubmit="executeApiAction(event, 'saveGenericRecord', buildMasterPayload(event), 'Categories')"><input type="hidden" id="cat-id" data-col="ID"><div class="p-4 space-y-3"><h3 class="font-bold text-sm text-slate-800">Add Category</h3><input type="text" id="cat-Name" data-col="Name" placeholder="Name" required class="w-full border rounded-lg px-3 py-2 text-sm"><select id="cat-Type" data-col="Type" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="Income">Income (Receipt)</option><option value="Expense">Expense (Payment)</option><option value="Liability">Liability (Advance)</option><option value="Asset">Asset (Capital)</option></select><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="closeModal('modal-category')" class="px-3 py-1.5 text-xs rounded hover:bg-slate-200 transition-colors">Cancel</button><button type="submit" class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">Save</button></div></div></form></div>
+    <div id="modal-event" class="modal hidden fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center p-4"><form class="bg-white w-64 rounded-xl shadow-xl overflow-hidden" onsubmit="executeApiAction(event, 'saveGenericRecord', buildMasterPayload(event), 'Events')"><input type="hidden" id="ev-id" data-col="ID"><div class="p-4 space-y-3"><h3 class="font-bold text-sm text-slate-800">Add Event</h3><input type="text" id="ev-Name" data-col="Name" placeholder="Event Name" required class="w-full border rounded-lg px-3 py-2 text-sm"><input type="date" id="ev-Date" data-col="Date" class="w-full border rounded-lg px-3 py-2 text-sm"><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="closeModal('modal-event')" class="px-3 py-1.5 text-xs rounded hover:bg-slate-200 transition-colors">Cancel</button><button type="submit" class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">Save</button></div></div></form></div>
+    <div id="modal-config" class="modal hidden fixed inset-0 bg-slate-900/40 z-[60] flex items-center justify-center p-4"><form class="bg-white w-64 rounded-xl shadow-xl overflow-hidden" onsubmit="executeApiAction(event, 'saveGenericRecord', buildMasterPayload(event), 'MemberConfig')"><div class="p-4 space-y-3"><h3 class="font-bold text-sm text-slate-800">Add Custom Field</h3><input type="text" data-col="FieldKey" placeholder="Key (e.g. adhaarNo)" required class="w-full border rounded-lg px-3 py-2 text-sm font-mono text-slate-500"><input type="text" data-col="Label" placeholder="Display Label (e.g. Adhaar Card)" required class="w-full border rounded-lg px-3 py-2 text-sm"><select data-col="Type" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="text">Text / String</option><option value="number">Number</option><option value="date">Date</option></select><div class="flex justify-end gap-2 pt-2"><button type="button" onclick="closeModal('modal-config')" class="px-3 py-1.5 text-xs rounded hover:bg-slate-200 transition-colors">Cancel</button><button type="submit" class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">Save</button></div></div></form></div>
+
+    <script>
+        let appData = { Members: [], Users: [], Events: [], Accounts: [], Categories: [], Expected: [], Ledger: [], MemberConfig: [], AuditLog: [] };
+        let userCtx = { role: 0 };
+        const fmtIdr = num => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(num || 0);
+
+        function showToast(msg, isErr=false) {
+            const el = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').className = isErr ? 'fas fa-exclamation-triangle text-rose-400 text-xl' : 'fas fa-check-circle text-emerald-400 text-xl';
+            el.classList.remove('translate-x-full', 'opacity-0'); setTimeout(() => el.classList.add('translate-x-full', 'opacity-0'), 4000);
+        }
+
+        function setLoader(show) { document.getElementById('sync-loader').style.display = show ? 'flex' : 'none'; }
+        function openModal(id) { const el = document.getElementById(id); el.classList.remove('hidden'); setTimeout(()=>el.classList.add('visible'),10); }
+        function closeModal(id) { const el = document.getElementById(id); el.classList.remove('visible'); setTimeout(()=>el.classList.add('hidden'), 200); }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('mobile-overlay').classList.toggle('active'); }
+
+        function customConfirm(title, msg, confirmText = 'Confirm', isDanger = true) {
+            return new Promise((resolve) => {
+                document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
+                const okBtn = document.getElementById('btn-confirm-ok'); okBtn.innerText = confirmText;
+                okBtn.className = isDanger ? 'flex-1 py-2.5 rounded-xl font-bold text-white bg-rose-600 shadow-md hover:bg-rose-700 transition-colors' : 'flex-1 py-2.5 rounded-xl font-bold text-white bg-indigo-600 shadow-md hover:bg-indigo-700 transition-colors';
+                openModal('modal-confirm');
+                document.getElementById('btn-confirm-cancel').onclick = () => { closeModal('modal-confirm'); resolve(false); };
+                okBtn.onclick = () => { closeModal('modal-confirm'); resolve(true); };
+            });
+        }
+
+        function switchTab(id) {
+            ['dashboard', 'members', 'contributions', 'donations', 'liabilities', 'ledger', 'reports', 'masterdata', 'audit'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                if(document.getElementById(`nav-${t}`)) document.getElementById(`nav-${t}`).classList.remove('active');
+            });
+            document.getElementById(`view-${id}`).classList.remove('hidden');
+            if(document.getElementById(`nav-${id}`)) document.getElementById(`nav-${id}`).classList.add('active');
+            
+            const titles = { dashboard:'Dashboard', members:'Directory & Security', contributions:'Expected Contributions (Memo)', donations:'Donations & Sponsorships', liabilities:'Advances & Payables', ledger:'Main Ledger (Universal Vouchers)', reports:'Financial Reports', masterdata:'Master Data Config', audit:'System Audit Log' };
+            document.getElementById('page-title').innerText = titles[id];
+            if(id === 'dashboard') updateDashboard();
+            if(window.innerWidth < 768 && document.getElementById('mobile-overlay').classList.contains('active')) toggleSidebar();
+        }
+
+        // --- AUTH, TOKENS & API WRAPPER ---
+        // SCRIPT URL GOES HERE (If Migrating to GitHub Pages, replace with Web App URL)
+        // const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+        
+        let currentAuthResolver = null;
+        let storedToken = localStorage.getItem('fam_token');
+
+        function executeLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUsername').value, p = document.getElementById('loginPassword').value, btn = document.getElementById('loginBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+            google.script.run.withSuccessHandler(resStr => {
+                const res = JSON.parse(resStr); btn.innerHTML = 'Unlock Ledger';
+                if (res.error) { document.getElementById('loginError').innerText = res.error; } 
+                else if (res.token) {
+                    localStorage.setItem('fam_token', res.token); storedToken = res.token;
+                    document.getElementById('authGate').classList.add('hidden'); document.getElementById('loginError').innerText = '';
+                    loadAllData(false);
+                }
+            }).doLogin(u, p);
+        }
+
+        function executeReAuth(e) {
+            e.preventDefault();
+            const p = document.getElementById('reauthPassword').value, btn = document.getElementById('reauthBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            google.script.run.withSuccessHandler(resStr => {
+                const res = JSON.parse(resStr); btn.innerHTML = 'Resume Action';
+                if (res.error) { document.getElementById('reauthError').innerText = res.error; } 
+                else if (res.token) {
+                    localStorage.setItem('fam_token', res.token); storedToken = res.token;
+                    closeModal('reAuthGate'); document.getElementById('reauthError').innerText = '';
+                    if(currentAuthResolver) { currentAuthResolver(res.token); currentAuthResolver = null; }
+                }
+            }).doLogin(userCtx.username, p);
+        }
+
+        function logout() {
+            localStorage.removeItem('fam_token'); storedToken = null;
+            document.getElementById('authGate').classList.remove('hidden');
+            document.getElementById('loginPassword').value = ''; document.getElementById('loginError').innerText = '';
+        }
+
+        function apiCall(methodName, ...args) {
+            return new Promise((resolve, reject) => {
+                if (!storedToken && methodName === 'getAppData') return reject(new Error("No Token"));
+                const attemptCall = (tokenToUse) => {
+                    google.script.run.withSuccessHandler(resStr => {
+                        try {
+                            const res = JSON.parse(resStr);
+                            if (res.error === "SESSION_EXPIRED") {
+                                document.getElementById('reauthPassword').value = ''; openModal('reAuthGate');
+                                new Promise(resReAuth => { currentAuthResolver = resReAuth; }).then(newToken => attemptCall(newToken)); 
+                            } else if (res.error) { reject(new Error(res.error)); } else { resolve(res); }
+                        } catch(e) { reject(e); }
+                    }).withFailureHandler(reject)[methodName](tokenToUse, ...args);
+                };
+                attemptCall(storedToken);
+            });
+        }
+
+        async function executeApiAction(e, methodName, payloadStr, optionalArg = null) {
+            if(e) e.preventDefault(); const form = e.target, btn = form.querySelector('button[type="submit"]'), originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...'; btn.disabled = true;
+            try {
+                let res; if(optionalArg) res = await apiCall(methodName, optionalArg, payloadStr); else res = await apiCall(methodName, payloadStr);
+                showToast('Action Successful'); closeModal(form.closest('.modal').id); 
+                
+                // Essential 1.2s delay to ensure Google Sheets finishes math calculations before pulling fresh data
+                setLoader(true);
+                await new Promise(r => setTimeout(r, 1200)); 
+                loadAllData(true);
+            } catch(err) { showToast(err.message, true); } finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+
+        function loadAllData(silent = false) {
+            if (!storedToken) { logout(); return; }
+            if (!silent) setLoader(true);
+            apiCall('getAppData').then(res => {
+                appData = res.db; userCtx = res.user;
+                document.getElementById('user-name').innerText = userCtx.name;
+                document.getElementById('user-role-badge').innerText = userCtx.role === 2 ? 'Admin' : 'Viewer';
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = userCtx.role === 2 ? '' : 'none');
+                populateDropdowns();
+                if(!document.getElementById('view-dashboard').classList.contains('hidden')) updateDashboard();
+                renderMembers(); renderContributions(); renderDonations(); renderLiabilities(); renderLedger(); renderMasterData(); renderAudit();
+                setLoader(false);
+            }).catch(err => {
+                setLoader(false);
+                if (err.message === "SESSION_EXPIRED" || err.message === "No Token" || err.message.includes("Invalid")) logout(); else showToast(err.message, true);
+            });
+        }
+
+        // --- PAYLOAD BUILDERS FOR API ---
+        function buildVoucherPayload() {
+            const mode = document.getElementById('smart-vouch-mode').value, editId = document.getElementById('smart-vouch-edit-id').value, date = document.getElementById('smart-vouch-date').value, memo = document.getElementById('smart-vouch-memo').value, mainAcc = document.getElementById('smart-vouch-main-acc').value;
+            let lines = [], totalLinesAmt = 0;
+            document.querySelectorAll('#smart-vouch-lines tr').forEach(tr => {
+                const type = mode === 'journal' ? tr.querySelector('.v-type').value : (mode === 'receipt' ? 2 : 1), acc = mode === 'journal' ? tr.querySelector('.v-acc').value : '', cat = tr.querySelector('.v-cat').value, ev = tr.querySelector('.v-evt').value, mem = tr.querySelector('.v-mem').value, amt = parseFloat(tr.querySelector('.v-amt').value) || 0;
+                if (amt > 0) { lines.push({ Date: date, Type: parseInt(type), AccountID: acc, CategoryID: cat, EventID: ev, MemberID: mem, Amount: amt, Notes: memo }); totalLinesAmt += amt; }
+            });
+            if (mode !== 'journal') lines.push({ Date: date, Type: mode === 'receipt' ? 1 : 2, AccountID: mainAcc, CategoryID: '', EventID: '', MemberID: '', Amount: totalLinesAmt, Notes: memo });
+            return JSON.stringify({ isEdit: !!editId, groupID: editId, lines: lines });
+        }
+        function buildMemberPayload() {
+            let cfg = {}; document.querySelectorAll('.config-row').forEach(row => { const k = row.querySelector('.config-key').value.trim(), v = row.querySelector('.config-val').value.trim(); if(k) cfg[k] = v; });
+            return JSON.stringify({ ID: document.getElementById('mem-id').value, Name: document.getElementById('mem-name').value, Email: document.getElementById('mem-email').value, Status: document.getElementById('mem-status').value, Config: JSON.stringify(cfg) });
+        }
+        function buildUserPayload() {
+            return JSON.stringify({ MemberID: document.getElementById('user-member-id').value, Username: document.getElementById('user-username').value, NewPassword: document.getElementById('user-newpass').value, Role: document.getElementById('user-role').value, IsLocked: !document.getElementById('user-unlock').checked && !document.getElementById('user-locked-warning').classList.contains('hidden') });
+        }
+        function buildExpectedPayload() { return JSON.stringify({ ID: document.getElementById('exp-id').value, Date: document.getElementById('exp-date').value, MemberID: document.getElementById('exp-member').value, EventID: document.getElementById('exp-event').value, Amount: parseFloat(document.getElementById('exp-amount').value) }); }
+        function buildBulkExpectedPayload() {
+            const date = document.getElementById('bulk-date').value, evId = document.getElementById('bulk-event').value, amt = parseFloat(document.getElementById('bulk-amount').value), ids = Array.from(document.querySelectorAll('.bulk-cb:checked')).map(cb => cb.value);
+            return JSON.stringify(ids.map(id => ({ Date: date, EventID: evId, MemberID: id, Amount: amt })));
+        }
+        function buildMasterPayload(e) { let data = {}; e.target.querySelectorAll('[data-col]').forEach(inp => data[inp.dataset.col] = inp.value); return JSON.stringify(data); }
+        
+        async function deleteEntry(groupId, btnElement, modalToClose) {
+            if(!(await customConfirm("Delete Voucher?", "Delete this entire voucher completely? This action cannot be undone."))) return;
+            const originalText = btnElement.innerHTML; btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btnElement.disabled = true;
+            try { 
+                await apiCall('deleteVoucher', groupId); 
+                showToast('Deleted'); 
+                if(modalToClose) closeModal(modalToClose); 
+                
+                setLoader(true);
+                await new Promise(r => setTimeout(r, 1200)); 
+                loadAllData(true); 
+            } 
+            catch(err) { showToast(err.message, true); } 
+            finally { btnElement.innerHTML = originalText; btnElement.disabled = false; }
+        }
+        
+        async function deleteExpected(id) {
+            if(!(await customConfirm("Remove Due?", "Are you sure you want to remove this assigned due?"))) return;
+            try { 
+                await apiCall('deleteGenericRecord', 'Expected', id); 
+                showToast('Due Deleted'); 
+                
+                setLoader(true);
+                await new Promise(r => setTimeout(r, 1200)); 
+                loadAllData(true); 
+            } 
+            catch(e) { showToast(e.message, true); }
+        }
+
+        // --- GLOBAL OPTIONS ---
+        let optAccounts = '', optCategories = '', optEvents = '', optMembers = '';
+        function populateDropdowns() {
+            optMembers = '<option value="ANON">-- Ext. / None --</option>' + appData.Members.filter(m=>m.Status==1).map(m => `<option value="${m.ID}">${m.Name}</option>`).join('');
+            optEvents = '<option value="">-- General --</option>' + appData.Events.map(e => `<option value="${e.ID}">${e.Name}</option>`).join('');
+            optAccounts = '<option value="">-- Select Account --</option>' + appData.Accounts.map(a => `<option value="${a.ID}">${a.Name} (${a.Type==2?'Bank':'Cash'})</option>`).join('');
+            optCategories = '<option value="">-- Select Category --</option>' + appData.Categories.map(c => `<option value="${c.ID}">${c.Name} (${c.Type})</option>`).join('');
+            document.querySelectorAll('.dropdown-events').forEach(el => { const isReq = el.hasAttribute('required'); el.innerHTML = (isReq ? '' : '<option value="">-- All Events --</option>') + appData.Events.map(e => `<option value="${e.ID}">${e.Name}</option>`).join(''); });
+            document.querySelectorAll('.dropdown-members').forEach(el => el.innerHTML = optMembers);
+            document.querySelectorAll('.dropdown-accounts').forEach(el => el.innerHTML = optAccounts);
+        }
+
+        // --- SMART VOUCHER UI ---
+        function getCapCache() {
+            let caps = {}; const contCat = appData.Categories.find(c => String(c.Name).toLowerCase().includes('contrib'))?.ID;
+            appData.Expected.forEach(x => { const eId = x.EventID || 'general'; if(!caps[eId]) caps[eId] = {}; if(!caps[eId][x.MemberID]) caps[eId][x.MemberID] = { expected: 0, paid: 0 }; caps[eId][x.MemberID].expected += parseFloat(x.Amount) || 0; });
+            appData.Ledger.forEach(t => { 
+                if (t.CategoryID !== contCat || !t.MemberID || t.MemberID === 'ANON') return; 
+                const eId = t.EventID || 'general'; 
+                if(!caps[eId]) caps[eId] = {}; 
+                if(!caps[eId][t.MemberID]) caps[eId][t.MemberID] = { expected: 0, paid: 0 }; 
+                if (t.Type == 2) caps[eId][t.MemberID].paid += parseFloat(t.Amount) || 0; 
+                if (t.Type == 1) caps[eId][t.MemberID].paid -= parseFloat(t.Amount) || 0; 
+            });
+            return caps;
+        }
+
+        function openSmartVoucher(mode, editGroupId = null) {
+            document.getElementById('form-smart-voucher').reset(); document.getElementById('smart-vouch-date').value = new Date().toISOString().split('T')[0]; document.getElementById('smart-vouch-lines').innerHTML = ''; document.getElementById('smart-vouch-mode').value = mode; document.getElementById('smart-vouch-edit-id').value = editGroupId || '';
+            const tDrBox = document.getElementById('smart-vouch-dr-box'), tCrBox = document.getElementById('smart-vouch-cr-box'), accWrapper = document.getElementById('smart-vouch-main-acc-wrapper'), tLabel = document.getElementById('smart-vouch-tot-label'), delBtn = document.getElementById('smart-vouch-delete-btn');
+            
+            if (mode === 'journal') {
+                document.getElementById('smart-vouch-title').innerText = editGroupId ? 'Edit Journal Voucher' : 'Post Journal Voucher';
+                accWrapper.classList.add('hidden'); document.getElementById('smart-vouch-main-acc').removeAttribute('required'); document.getElementById('smart-vouch-col-type').classList.remove('hidden'); document.getElementById('smart-vouch-col-acc').classList.remove('hidden'); tDrBox.classList.remove('hidden'); tCrBox.classList.remove('hidden'); tLabel.innerText = 'Difference (Must be 0)';
+            } else {
+                document.getElementById('smart-vouch-title').innerText = mode === 'receipt' ? (editGroupId?'Edit Receipt':'Receive Money In') : (editGroupId?'Edit Payment':'Send Money Out'); document.getElementById('smart-vouch-acc-label').innerText = mode === 'receipt' ? 'Received Into (Dr)' : 'Paid From (Cr)';
+                accWrapper.classList.remove('hidden'); document.getElementById('smart-vouch-main-acc').setAttribute('required', 'true'); document.getElementById('smart-vouch-col-type').classList.add('hidden'); document.getElementById('smart-vouch-col-acc').classList.add('hidden'); tDrBox.classList.add('hidden'); tCrBox.classList.add('hidden'); tLabel.innerText = 'Total ' + (mode === 'receipt' ? 'Receipt' : 'Payment');
+            }
+            
+            if (editGroupId && userCtx.role === 2) { delBtn.classList.remove('hidden'); delBtn.onclick = function() { deleteEntry(editGroupId, this, 'modal-smart-voucher'); }; } else { delBtn.classList.add('hidden'); }
+            
+            if (editGroupId) {
+                const grpLines = appData.Ledger.filter(t => t.GroupID === editGroupId);
+                if(grpLines.length > 0) document.getElementById('smart-vouch-date').value = grpLines[0].Date;
+                if (mode === 'journal') { grpLines.forEach(line => { addSmartVoucherLine(mode, { ...line, Amount: Math.abs(parseFloat(line.Amount)) }); }); } 
+                else {
+                    const targetAccType = mode === 'receipt' ? 1 : 2; const accLine = grpLines.find(x => x.Type == targetAccType && x.AccountID);
+                    if(accLine) document.getElementById('smart-vouch-main-acc').value = accLine.AccountID; document.getElementById('smart-vouch-memo').value = grpLines[0].Notes || '';
+                    const itemLines = grpLines.filter(x => x !== accLine);
+                    if(itemLines.length === 0) addSmartVoucherLine(mode); else itemLines.forEach(line => { addSmartVoucherLine(mode, { ...line, Amount: Math.abs(parseFloat(line.Amount)) }); });
+                }
+            } else { addSmartVoucherLine(mode); if(mode==='journal') addSmartVoucherLine(mode); }
+            calcSmartVoucher(); openModal('modal-smart-voucher');
+        }
+
+        function addSmartVoucherLine(mode, existingData = null) {
+            const tr = document.createElement('tr'); tr.className = 'hover:bg-slate-100/50 transition-colors group';
+            const defType = existingData ? existingData.Type : (mode === 'receipt' ? 2 : (mode === 'payment' ? 1 : 1)), defAcc = existingData ? existingData.AccountID : '', defCat = existingData ? existingData.CategoryID : '', defEvt = existingData ? existingData.EventID : '', defMem = existingData ? existingData.MemberID : '', defAmt = existingData ? Math.abs(existingData.Amount) : '';
+            let catsToUse = optCategories;
+            if (mode === 'receipt') catsToUse = '<option value="">-- None --</option>' + appData.Categories.filter(c=>c.Type==='Income' || c.Type==='Liability').map(c => `<option value="${c.ID}">${c.Name} (${c.Type})</option>`).join('');
+            if (mode === 'payment') catsToUse = '<option value="">-- None --</option>' + appData.Categories.filter(c=>c.Type==='Expense' || c.Type==='Asset' || c.Type==='Liability').map(c => `<option value="${c.ID}">${c.Name} (${c.Type})</option>`).join('');
+            tr.innerHTML = `<td class="p-2 ${mode==='journal'?'':'hidden'}"><select class="v-type border rounded px-2 py-1.5 w-full text-xs bg-white font-bold" onchange="calcSmartVoucher()"><option value="1" ${defType==1?'selected':''}>Dr</option><option value="2" ${defType==2?'selected':''}>Cr</option></select></td><td class="p-2 ${mode==='journal'?'':'hidden'}"><select class="v-acc border rounded px-2 py-1.5 w-full text-xs bg-white">${optAccounts.replace(`value="${defAcc}"`, `value="${defAcc}" selected`)}</select></td><td class="p-2"><select class="v-cat border rounded px-2 py-1.5 w-full text-xs bg-white v-cat-trigger" required>${catsToUse.replace(`value="${defCat}"`, `value="${defCat}" selected`)}</select></td><td class="p-2"><select class="v-evt border rounded px-2 py-1.5 w-full text-xs bg-white">${optEvents.replace(`value="${defEvt}"`, `value="${defEvt}" selected`)}</select></td><td class="p-2"><select class="v-mem border rounded px-2 py-1.5 w-full text-xs bg-white">${optMembers.replace(`value="${defMem}"`, `value="${defMem}" selected`)}</select></td><td class="p-2"><input type="number" step="0.01" class="v-amt border rounded px-2 py-1.5 w-full text-xs text-right font-bold" value="${defAmt}" oninput="calcSmartVoucher()" required></td><td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove(); calcSmartVoucher();" class="text-slate-300 hover:text-rose-500"><i class="fas fa-trash-alt"></i></button></td>`;
+            document.getElementById('smart-vouch-lines').appendChild(tr);
+            tr.querySelector('.v-cat-trigger').addEventListener('change', validateCap); tr.querySelector('.v-evt').addEventListener('change', validateCap); tr.querySelector('.v-mem').addEventListener('change', validateCap); tr.querySelector('.v-amt').addEventListener('input', validateCap);
+        }
+
+        function validateCap(e) {
+            const tr = e.target.closest('tr'), cat = tr.querySelector('.v-cat'), mode = document.getElementById('smart-vouch-mode').value;
+            if (cat.options[cat.selectedIndex]?.text.toLowerCase().includes('contribution') && (mode === 'receipt' || tr.querySelector('.v-type')?.value == 2)) {
+                const memId = tr.querySelector('.v-mem').value, evtId = tr.querySelector('.v-evt').value || 'general', amt = parseFloat(tr.querySelector('.v-amt').value) || 0;
+                if (memId && memId !== 'ANON') {
+                    const caps = getCapCache(), cache = caps[evtId]?.[memId] || { expected: 0, paid: 0 }, bal = cache.expected - cache.paid; 
+                    if (amt > bal && bal >= 0) { tr.querySelector('.v-amt').classList.add('border-rose-400', 'bg-rose-50', 'text-rose-600'); tr.querySelector('.v-amt').title = `Exceeds expected due (Bal: ${bal})`; } 
+                    else { tr.querySelector('.v-amt').classList.remove('border-rose-400', 'bg-rose-50', 'text-rose-600'); tr.querySelector('.v-amt').title = ''; }
+                }
+            } else { tr.querySelector('.v-amt').classList.remove('border-rose-400', 'bg-rose-50', 'text-rose-600'); tr.querySelector('.v-amt').title = ''; }
+        }
+
+        function calcSmartVoucher() {
+            const mode = document.getElementById('smart-vouch-mode').value; let dr = 0, cr = 0, total = 0;
+            document.querySelectorAll('#smart-vouch-lines tr').forEach(tr => { const amt = parseFloat(tr.querySelector('.v-amt').value) || 0; total += amt; if(mode === 'journal') { const type = tr.querySelector('.v-type').value; if (type == 1) dr += amt; if (type == 2) cr += amt; }});
+            const btn = document.getElementById('smart-vouch-submit-btn');
+            if (mode === 'journal') {
+                const diff = dr - cr; document.getElementById('smart-vouch-tot-dr').innerText = fmtIdr(dr); document.getElementById('smart-vouch-tot-cr').innerText = fmtIdr(cr);
+                const diffEl = document.getElementById('smart-vouch-tot-amt'); diffEl.innerText = fmtIdr(Math.abs(diff));
+                if (Math.abs(diff) < 0.05 && dr > 0) { diffEl.classList.add('text-emerald-600'); diffEl.classList.remove('text-rose-600'); btn.disabled = false; } else { diffEl.classList.add('text-rose-600'); diffEl.classList.remove('text-emerald-600'); btn.disabled = true; }
+            } else { document.getElementById('smart-vouch-tot-amt').innerText = fmtIdr(total); btn.disabled = total <= 0; }
+        }
+
+        // --- DASHBOARD (6 KPIs) ---
+        function updateDashboard() {
+            let cash = 0, bank = 0, expYTD = 0, payables = 0, contribRec = 0, donRec = 0; let evtData = {}; 
+            appData.Events.forEach(e => evtData[e.ID] = { inc:0, exp:0, name:e.Name }); evtData['general'] = { inc:0, exp:0, name:'General' };
+            const catContribId = appData.Categories.find(c => String(c.Name).toLowerCase().includes('contrib'))?.ID;
+            const catDonateId = appData.Categories.find(c => String(c.Name).toLowerCase().includes('donation'))?.ID;
+            appData.Ledger.forEach(t => {
+                const amt = parseFloat(t.Amount)||0, cat = appData.Categories.find(c=>c.ID===t.CategoryID), acc = appData.Accounts.find(a=>a.ID===t.AccountID), eKey = t.EventID || 'general';
+                let effType = t.Type;
+                if (effType == 1 && acc) { acc.Type == 2 ? bank+=amt : cash+=amt; }
+                if (effType == 2 && acc) { acc.Type == 2 ? bank-=amt : cash-=amt; }
+                if (cat) {
+                    if (cat.Type === 'Expense') { if (effType == 1) { expYTD += amt; if(evtData[eKey]) evtData[eKey].exp += amt; } if (effType == 2) { expYTD -= amt; if(evtData[eKey]) evtData[eKey].exp -= amt; } }
+                    if (cat.Type === 'Liability') { if (effType == 2) payables += amt; if (effType == 1) payables -= amt; }
+                    if (cat.ID === catContribId) { if (effType == 2) { contribRec += amt; if(evtData[eKey]) evtData[eKey].inc += amt; } if (effType == 1) { contribRec -= amt; if(evtData[eKey]) evtData[eKey].inc -= amt; } }
+                    if (cat.ID === catDonateId) { if (effType == 2) { donRec += amt; if(evtData[eKey]) evtData[eKey].inc += amt; } if (effType == 1) { donRec -= amt; if(evtData[eKey]) evtData[eKey].inc -= amt; } }
+                }
+            });
+            document.getElementById('dash-cash').innerText = fmtIdr(cash); document.getElementById('dash-bank').innerText = fmtIdr(bank); document.getElementById('dash-expenses').innerText = fmtIdr(expYTD); document.getElementById('dash-payables').innerText = fmtIdr(payables); document.getElementById('dash-contrib').innerText = fmtIdr(contribRec); document.getElementById('dash-donation').innerText = fmtIdr(donRec);
+            let evHtml = ''; Object.values(evtData).filter(d => d.inc > 0 || d.exp > 0).sort((a,b) => (b.inc - b.exp) - (a.inc - a.exp)).forEach(ev => { const bal = ev.inc - ev.exp; evHtml += `<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="py-3 px-2 font-medium text-slate-700">${ev.name}</td><td class="py-3 px-2 text-right font-bold text-emerald-600">${ev.inc > 0 ? fmtIdr(ev.inc) : '-'}</td><td class="py-3 px-2 text-right font-bold text-rose-600">${ev.exp > 0 ? fmtIdr(ev.exp) : '-'}</td><td class="py-3 px-2 text-right font-black ${bal >= 0 ? 'text-indigo-600' : 'text-rose-600'}">${fmtIdr(bal)}</td></tr>`; });
+            document.getElementById('dash-events-tbody').innerHTML = evHtml || `<tr><td colspan="4" class="py-6 text-center text-slate-400 italic">No event financials recorded.</td></tr>`;
+            let recentHtml = ''; const allGroups = [...new Set([...appData.Ledger].reverse().map(t => t.GroupID))].slice(0, 7); 
+            allGroups.forEach(gId => {
+                const grpItems = appData.Ledger.filter(t => t.GroupID === gId); if (grpItems.length === 0) return;
+                const dt = grpItems[0].Date; let totAmt = 0; grpItems.forEach(x => { if(x.Type == 1) totAmt += Math.abs(parseFloat(x.Amount)); });
+                const particulars = [...new Set(grpItems.filter(x=>x.CategoryID).map(x=> appData.Categories.find(c=>c.ID===x.CategoryID)?.Name))].join(', ') || 'Journal Entry';
+                recentHtml += `<tr class="hover:bg-slate-50 border-b border-slate-100 cursor-pointer" onclick="switchTab('ledger')"><td class="py-3 px-2 text-[10px] text-slate-500 whitespace-nowrap">${dt}</td><td class="py-3 px-2 text-xs font-medium text-slate-700 truncate max-w-[150px] md:max-w-[200px]" title="${particulars}">${particulars}</td><td class="py-3 px-2 text-right font-bold text-slate-800">${fmtIdr(totAmt)}</td></tr>`;
+            });
+            document.getElementById('dash-recent-tbody').innerHTML = recentHtml || `<tr><td colspan="3" class="py-6 text-center text-slate-400 italic">No recent activity.</td></tr>`;
+        }
+
+        // --- ACCOUNT DRILLDOWN ---
+        function openAccountDrilldown(accType) {
+            const tbody = document.getElementById('drilldown-tbody'); tbody.innerHTML = ''; const accs = appData.Accounts.filter(a => a.Type == accType); let totalTypeBal = 0;
+            accs.forEach(acc => {
+                let bal = 0; appData.Ledger.filter(t => t.AccountID === acc.ID).forEach(t => { bal += (t.Type == 1 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); });
+                totalTypeBal += bal;
+                tbody.innerHTML += `<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="py-3 px-2 font-medium text-slate-700">${acc.Name}</td><td class="py-3 px-2 text-right font-bold text-slate-800">${fmtIdr(bal)}</td><td class="py-3 px-2 text-center"><button onclick="closeModal('modal-account-list'); jumpToAccountStmt('${acc.ID}')" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded hover:bg-indigo-100 transition-colors">Statement</button></td></tr>`;
+            });
+            tbody.innerHTML += `<tr class="bg-slate-100/50"><td class="py-3 px-2 font-black text-slate-700 uppercase tracking-wider text-[10px]">Total</td><td class="py-3 px-2 text-right font-black text-indigo-700 text-lg">${fmtIdr(totalTypeBal)}</td><td></td></tr>`;
+            document.getElementById('drilldown-title').innerText = accType == 1 ? 'Cash Accounts Overview' : 'Bank Accounts Overview';
+            openModal('modal-account-list');
+        }
+        function jumpToAccountStmt(accId) { 
+            switchTab('reports'); document.getElementById('reportSelector').value = 'stmt'; 
+            onReportTypeChange(); 
+            setTimeout(() => { document.getElementById('reportParam').value = accId; runReport(); }, 100); 
+        }
+
+        // --- DIRECTORY & USERS ---
+        function openAddMemberModal() { document.getElementById('form-member').reset(); document.getElementById('mem-id').value = ''; renderMemberConfigForm({}); openModal('modal-member'); }
+        function editMember(id) { const m = appData.Members.find(x => x.ID === id); document.getElementById('mem-id').value = m.ID; document.getElementById('mem-name').value = m.Name; document.getElementById('mem-email').value = m.Email; document.getElementById('mem-status').value = m.Status; let currentCfg = {}; try { currentCfg = m.Config ? JSON.parse(m.Config) : {}; } catch(e) {} renderMemberConfigForm(currentCfg); openModal('modal-member'); }
+        function openUserModal(memberId, memberName) {
+            document.getElementById('form-user').reset(); document.getElementById('user-member-id').value = memberId; document.getElementById('user-member-name-label').innerText = memberName;
+            const u = appData.Users.find(x => x.MemberID === memberId), w = document.getElementById('user-locked-warning'), c = document.getElementById('user-unlock');
+            if (u) { document.getElementById('user-username').value = u.Username; document.getElementById('user-role').value = u.Role; if(u.IsLocked) { w.classList.remove('hidden'); c.checked = false; } else { w.classList.add('hidden'); c.checked = true; } } 
+            else { w.classList.add('hidden'); c.checked = true; }
+            openModal('modal-user');
+        }
+        function openBulkContribModal() {
+            document.getElementById('form-bulk-contrib').reset(); document.getElementById('bulk-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('bulk-tbody').innerHTML = appData.Members.filter(m => m.Status == 1).map(m => `<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="px-4 py-2 text-center w-10"><input type="checkbox" class="bulk-cb w-4 h-4 text-indigo-600 rounded" value="${m.ID}" checked></td><td class="px-4 py-2 text-sm font-medium text-slate-700">${m.Name}</td></tr>`).join('');
+            openModal('modal-bulk-contrib');
+        }
+        function renderMemberConfigForm(currentCfg) {
+            const container = document.getElementById('mem-config-container'); container.innerHTML = '';
+            if (!appData.MemberConfig || appData.MemberConfig.length === 0) { container.innerHTML = '<p class="text-xs text-slate-400 italic">No custom fields defined in Master Data.</p>'; return; }
+            appData.MemberConfig.forEach(c => { const div = document.createElement('div'); div.className = 'flex flex-col config-row mb-3'; div.innerHTML = `<label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">${c.Label}</label><input type="hidden" class="config-key" value="${c.FieldKey}"><input type="${c.Type}" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 outline-none config-val" value="${currentCfg[c.FieldKey]||''}" placeholder="Enter ${c.Label.toLowerCase()}">`; container.appendChild(div); });
+        }
+        function renderMembers() {
+            const tbody = document.getElementById('member-tbody'), q = document.getElementById('search-member')?.value.toLowerCase() || '', filtered = appData.Members.filter(m => String(m.Name).toLowerCase().includes(q));
+            tbody.innerHTML = [...filtered].reverse().map(m => {
+                const u = appData.Users.find(x => x.MemberID === m.ID); let authHtml = `<span class="text-[10px] text-slate-400 italic">No Login Setup</span>`;
+                if(u) { if(u.IsLocked) authHtml = `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[9px] font-bold uppercase"><i class="fas fa-lock mr-1"></i>Locked</span><br><span class="text-[9px] text-slate-400">@${u.Username}</span>`; else authHtml = `<span class="text-[10px] text-emerald-600 font-bold"><i class="fas fa-check-circle mr-1"></i>Active</span><br><span class="text-[9px] text-slate-400">@${u.Username}</span>`; }
+                return `<tr class="hover:bg-slate-50 transition-colors"><td class="px-6 py-4 font-mono text-xs text-slate-400">${m.ID}</td><td class="px-6 py-4 font-bold text-slate-700">${m.Name}<br><span class="text-[10px] font-normal text-slate-400">${m.Email||'No Email'}</span></td><td class="px-6 py-4">${authHtml}</td><td class="px-6 py-4 text-center admin-only whitespace-nowrap"><button onclick="editMember('${m.ID}')" class="text-slate-400 hover:text-indigo-600 p-2 mr-2" title="Edit Profile"><i class="fas fa-edit"></i></button><button onclick="openUserModal('${m.ID}', '${m.Name.replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-amber-500 p-2" title="Manage Login Account"><i class="fas fa-key"></i></button></td></tr>`;
+            }).join('') || `<tr><td colspan="5" class="text-center py-8 text-slate-400">No members found.</td></tr>`;
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = userCtx.role === 2 ? '' : 'none');
+        }
+
+        // --- ACCOUNTING VIEWS ---
+        function renderContributions() {
+            const tbody = document.getElementById('contrib-tbody'); const evtId = document.getElementById('contrib-event-filter').value; const catContribId = appData.Categories.find(c => String(c.Name).toLowerCase().includes('contrib'))?.ID;
+            let evtSummary = {}; 
+            appData.Expected.forEach(x => { if(evtId && x.EventID !== evtId) return; const eId = x.EventID || 'general'; if(!evtSummary[eId]) evtSummary[eId] = { name: appData.Events.find(e=>e.ID===eId)?.Name || 'General', due: 0, paid: 0, mems: {} }; if(!evtSummary[eId].mems[x.MemberID]) evtSummary[eId].mems[x.MemberID] = { name: appData.Members.find(m=>m.ID===x.MemberID)?.Name || 'Unknown', due: 0, paid: 0, records: [] }; evtSummary[eId].mems[x.MemberID].records.push({id: x.ID, amt: parseFloat(x.Amount)}); evtSummary[eId].mems[x.MemberID].due += parseFloat(x.Amount); evtSummary[eId].due += parseFloat(x.Amount); });
+            appData.Ledger.forEach(t => { 
+                if(evtId && t.EventID !== evtId) return; 
+                if(!t.MemberID || t.MemberID === 'ANON') return; 
+                const eId = t.EventID || 'general'; 
+                if(!evtSummary[eId] || !evtSummary[eId].mems[t.MemberID]) return; 
+                const amt = parseFloat(t.Amount) || 0; 
+                if (t.CategoryID === catContribId) { 
+                    if(t.Type == 2) { evtSummary[eId].mems[t.MemberID].paid += amt; evtSummary[eId].paid += amt; } 
+                    if(t.Type == 1) { evtSummary[eId].mems[t.MemberID].paid -= amt; evtSummary[eId].paid -= amt; }
+                } 
+            });
+            let html = ''; Object.keys(evtSummary).forEach(eId => { const ev = evtSummary[eId], bal = ev.due - ev.paid; html += `<tr class="bg-indigo-50 border-b border-indigo-100 cursor-pointer hover:bg-indigo-100 transition-colors" onclick="document.getElementById('evt-details-${eId}').classList.toggle('hidden')"><td class="px-6 py-4 font-bold text-indigo-800"><i class="fas fa-chevron-down mr-2 text-indigo-400 text-xs"></i> ${ev.name}</td><td class="px-6 py-4 text-right font-bold text-slate-700">${fmtIdr(ev.due)}</td><td class="px-6 py-4 text-right font-bold text-emerald-600">${fmtIdr(ev.paid)}</td><td class="px-6 py-4 text-right font-bold ${bal>0?'text-rose-600':'text-slate-500'}">${fmtIdr(bal)}</td></tr>`; html += `<tr id="evt-details-${eId}" class="hidden bg-white"><td colspan="4" class="p-0"><div class="bg-slate-50 py-2 px-4 md:px-8 border-b shadow-inner overflow-x-auto"><table class="w-full text-xs"><thead class="text-slate-400 border-b"><tr><th class="py-2 text-left w-1/3">Member Name</th><th class="py-2 text-right">Expected</th><th class="py-2 text-right">Cont. Paid</th><th class="py-2 text-right">Balance Memo</th><th class="py-2 text-right admin-only w-20">Del Due</th></tr></thead><tbody>${Object.values(ev.mems).map(m => { const mBal = m.due - m.paid; const delBtns = m.records.map(r => `<button onclick="deleteExpected('${r.id}')" title="Delete ₹${r.amt} due" class="text-rose-400 hover:text-rose-600 ml-2 admin-only"><i class="fas fa-trash-alt"></i></button>`).join(''); return `<tr class="border-b border-slate-100 hover:bg-slate-100"><td class="py-2 font-medium">${m.name}</td><td class="py-2 text-right text-slate-500">${fmtIdr(m.due)}</td><td class="py-2 text-right text-emerald-600">${fmtIdr(m.paid)}</td><td class="py-2 text-right font-bold ${mBal>0?'text-rose-500':'text-slate-400'}">${fmtIdr(mBal)}</td><td class="py-2 text-right whitespace-nowrap admin-only">${delBtns}</td></tr>` }).join('')}</tbody></table></div></td></tr>`; });
+            document.getElementById('contrib-tbody').innerHTML = html || `<tr><td colspan="4" class="text-center py-8 text-slate-400">No expected dues found.</td></tr>`;
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = userCtx.role === 2 ? '' : 'none');
+        }
+
+        function renderDonations() {
+            const tbody = document.getElementById('donations-tbody'), evtId = document.getElementById('donation-event-filter').value, catDonateId = appData.Categories.find(c => String(c.Name).toLowerCase().includes('donation'))?.ID;
+            let html = '', total = 0;
+            [...appData.Ledger].filter(t => t.CategoryID === catDonateId && (evtId==='' || t.EventID === evtId)).sort((a,b)=>new Date(b.Date)-new Date(a.Date)).forEach(t => { const amt = parseFloat(t.Amount)||0; if (t.Type == 2) total += amt; else total -= amt; const ev = appData.Events.find(e=>e.ID===t.EventID)?.Name || '-'; const mem = t.MemberID === 'ANON' ? 'External / Anon' : (appData.Members.find(m=>m.ID===t.MemberID)?.Name || '-'); html += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="px-6 py-3 font-mono text-xs text-slate-500">${t.Date}</td><td class="px-6 py-3 font-medium text-slate-700">${mem}</td><td class="px-6 py-3 text-xs text-slate-500">${ev}</td><td class="px-6 py-3 text-xs text-slate-400 truncate max-w-[200px]">${t.Notes||''}</td><td class="px-6 py-3 text-right font-bold text-fuchsia-600">${t.Type==1?'-':''}${fmtIdr(amt)}</td></tr>`; });
+            document.getElementById('donations-total-display').innerText = fmtIdr(total);
+            tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-8 text-slate-400">No donations recorded.</td></tr>`;
+        }
+
+        function renderLiabilities() {
+            const tbody = document.getElementById('liabilities-tbody'); let memberAdvances = {}; appData.Members.forEach(m => memberAdvances[m.ID] = { name: m.Name, gen: 0, settled: 0, net: 0 });
+            appData.Ledger.forEach(t => { if(!t.MemberID || t.MemberID === 'ANON') return; const cat = appData.Categories.find(c=>c.ID===t.CategoryID); if(cat && cat.Type === 'Liability' && memberAdvances[t.MemberID]) { const amt = parseFloat(t.Amount)||0; if(t.Type == 2) memberAdvances[t.MemberID].gen += amt; if(t.Type == 1) memberAdvances[t.MemberID].settled += amt; } });
+            let html = ''; Object.keys(memberAdvances).forEach(mId => { const a = memberAdvances[mId]; a.net = a.gen - a.settled; if (a.net !== 0 || a.gen > 0) { html += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="px-6 py-3 font-medium text-slate-700">${a.name}</td><td class="px-6 py-3 text-right text-slate-500">${fmtIdr(a.gen)}</td><td class="px-6 py-3 text-right text-emerald-500">${fmtIdr(a.settled)}</td><td class="px-6 py-3 text-right font-bold ${a.net>0?'text-amber-600':(a.net<0?'text-rose-500':'text-slate-400')}">${fmtIdr(a.net)}</td></tr>`; } });
+            tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-8 text-slate-400">No member advances found.</td></tr>`;
+        }
+
+        function renderLedger() {
+            const tbody = document.getElementById('ledger-tbody'), tFilt = document.getElementById('ledger-filter-type').value, eFilt = document.getElementById('ledger-filter-event').value;
+            let filtered = appData.Ledger.filter(t => { if (eFilt && t.EventID != eFilt) return false; return true; }), html = '', processedGroups = new Set();
+            [...filtered].reverse().forEach(t => {
+                if (processedGroups.has(t.GroupID)) return; processedGroups.add(t.GroupID);
+                const grpItems = appData.Ledger.filter(x => x.GroupID === t.GroupID);
+                let vType = 'Journal'; let vSty = 'indigo'; const hasAcc = grpItems.find(x => x.AccountID);
+                if (hasAcc) { if (hasAcc.Type == 1) { vType = 'Receipt'; vSty = 'emerald'; } if (hasAcc.Type == 2) { vType = 'Payment'; vSty = 'rose'; } }
+                if (tFilt !== 'All') { if (tFilt == '1' && vType !== 'Receipt') return; if (tFilt == '2' && vType !== 'Payment') return; if (tFilt == '3' && vType !== 'Journal') return; }
+                let drCount = 0; let crCount = 0; let totAmt = 0;
+                grpItems.forEach(x => { if (x.Type == 1) { drCount++; totAmt += Math.abs(parseFloat(x.Amount)); } if (x.Type == 2) { crCount++; } });
+                const particulars = [...new Set(grpItems.filter(x=>x.CategoryID).map(x=> appData.Categories.find(c=>c.ID===x.CategoryID)?.Name))].join(', ') || 'No Category';
+                const typeProfile = `<span class="text-emerald-500">Dr: ${drCount}</span> / <span class="text-rose-500">Cr: ${crCount}</span>`;
+                const payload = btoa(unescape(encodeURIComponent(JSON.stringify(grpItems))));
+                let editMode = vType.toLowerCase();
+                html += `<tr class="hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-100" onclick="showVoucherModal('${payload}')"><td class="px-6 py-4 text-xs text-slate-500">${t.Date}</td><td class="px-6 py-4"><span class="text-[10px] font-bold uppercase bg-${vSty}-100 text-${vSty}-700 px-2 py-1 rounded">${vType}</span><br><span class="font-mono text-[9px] text-slate-400 block mt-1">${t.GroupID}</span></td><td class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">${typeProfile}</td><td class="px-6 py-4 text-xs"><div class="font-medium text-slate-700 truncate max-w-[150px] md:max-w-xs">${particulars}</div><div class="text-slate-400 text-[10px] truncate max-w-[150px] md:max-w-xs mt-0.5">${grpItems[0].Notes || 'No Memo'}</div></td><td class="px-6 py-4 text-right font-black text-slate-700 text-lg">${fmtIdr(totAmt)}</td><td class="px-6 py-4 text-center admin-only" onclick="event.stopPropagation();"><button onclick="openSmartVoucher('${editMode}', '${t.GroupID}')" class="text-indigo-400 hover:text-indigo-700 p-2 border border-slate-200 rounded shadow-sm bg-white"><i class="fas fa-edit mr-1"></i>Edit</button></td></tr>`;
+            });
+            document.getElementById('ledger-tbody').innerHTML = html || `<tr><td colspan="6" class="text-center py-8 text-slate-400">No ledger entries.</td></tr>`;
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = userCtx.role === 2 ? '' : 'none');
+        }
+
+        function showVoucherModal(b64) {
+            const items = JSON.parse(decodeURIComponent(escape(atob(b64))));
+            let content = `<div class="overflow-x-auto w-full"><table class="w-full text-left text-sm whitespace-nowrap min-w-[500px]"><thead class="border-b bg-slate-50"><tr class="text-slate-500 text-[10px] uppercase tracking-wider"><th class="p-3 w-10">Dr/Cr</th><th class="p-3">Particulars</th><th class="p-3 text-right">Debit (₹)</th><th class="p-3 text-right">Credit (₹)</th></tr></thead><tbody class="divide-y divide-slate-100">`;
+            let tDr = 0, tCr = 0;
+            items.forEach(i => {
+                const c = appData.Categories.find(cat => cat.ID === i.CategoryID)?.Name || ''; const a = appData.Accounts.find(acc => acc.ID === i.AccountID)?.Name || ''; const m = i.MemberID && i.MemberID !== 'ANON' ? (appData.Members.find(mem=>mem.ID===i.MemberID)?.Name || '') : '';
+                const amt = Math.abs(parseFloat(i.Amount)) || 0;
+                let particulars = [a, c, m].filter(x=>x).join(' - '); if(!particulars) particulars = 'System Generated';
+                if (i.Type == 1) tDr += amt; if (i.Type == 2) tCr += amt;
+                content += `<tr><td class="p-3 text-[10px] font-bold ${i.Type==1?'text-emerald-500':'text-rose-500'}">${i.Type==1?'Dr':'Cr'}</td><td class="p-3 text-xs text-slate-700 font-medium">${particulars}</td><td class="p-3 text-right font-bold text-emerald-600">${i.Type==1 ? fmtIdr(amt) : '-'}</td><td class="p-3 text-right font-bold text-rose-600">${i.Type==2 ? fmtIdr(amt) : '-'}</td></tr>`;
+            });
+            content += `<tr class="bg-slate-50 border-t-2 border-slate-200"><td colspan="2" class="p-3 font-bold text-slate-700 text-right uppercase text-[10px]">Voucher Total</td><td class="p-3 text-right font-black text-emerald-700">${fmtIdr(tDr)}</td><td class="p-3 text-right font-black text-rose-700">${fmtIdr(tCr)}</td></tr></tbody></table></div>`;
+            const vMemo = items[0].Notes || 'No general memo.'; content += `<div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-800"><span class="font-bold uppercase tracking-wider mr-2 text-[10px]">Narration:</span> ${vMemo}</div>`;
+            document.getElementById('details-title').innerText = `Voucher Breakdown: ${items[0].GroupID}`; document.getElementById('details-content').innerHTML = content;
+            openModal('modal-details'); 
+        }
+        
+        function showDetailsModal(title, b64Data) {
+            const dataStr = decodeURIComponent(escape(atob(b64Data))); let content = '';
+            try {
+                const obj = JSON.parse(dataStr);
+                content = '<div class="overflow-x-auto"><table class="w-full text-left text-xs"><tbody class="divide-y divide-slate-100">';
+                for (let key in obj) { content += `<tr><td class="py-2 pr-4 font-bold text-slate-500 whitespace-nowrap">${key}</td><td class="py-2 font-mono text-slate-800 break-all">${obj[key]}</td></tr>`; }
+                content += '</tbody></table></div>';
+            } catch(e) { content = `<div class="p-4 text-sm font-mono text-slate-700 whitespace-pre-wrap break-all">${dataStr}</div>`; }
+            document.getElementById('details-title').innerText = title; document.getElementById('details-content').innerHTML = content; openModal('modal-details');
+        }
+
+        // --- REPORTING SYSTEM (Date Ranges Added) ---
+        function onReportTypeChange() {
+            const type = document.getElementById('reportSelector').value, paramSel = document.getElementById('reportParam'), wrapper = document.getElementById('reportParamWrapper'), label = document.getElementById('reportParamLabel');
+            document.getElementById('report-container').innerHTML = '<div class="h-full flex flex-col items-center justify-center text-slate-400 bg-white border border-dashed border-slate-200 rounded-2xl"><i class="fas fa-file-invoice-dollar text-4xl mb-3 text-slate-200"></i><p>Select report settings to generate.</p></div>';
+            
+            if (type === 'stmt') {
+                wrapper.classList.remove('hidden'); label.innerText = "Select Account";
+                paramSel.innerHTML = '<option value="">-- Choose Account --</option>' + appData.Accounts.map(a => `<option value="${a.ID}">${a.Name} (${a.Type==2?'Bank':'Cash'})</option>`).join('');
+            } else if (type === 'adv-stmt') {
+                wrapper.classList.remove('hidden'); label.innerText = "Select Member";
+                paramSel.innerHTML = '<option value="">-- Choose Member --</option>' + appData.Members.map(m=>`<option value="${m.ID}">${m.Name}</option>`).join('');
+            } else if (type === 'bs' || type === 'ine') { 
+                wrapper.classList.add('hidden'); runReport(); 
+            } else { wrapper.classList.add('hidden'); }
+        }
+
+        function runReport() {
+            const type = document.getElementById('reportSelector').value, paramVal = document.getElementById('reportParam').value, container = document.getElementById('report-container');
+            const fDate = document.getElementById('report-from').value, tDate = document.getElementById('report-to').value;
+            if((type === 'stmt' || type === 'adv-stmt') && !paramVal) return;
+            container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-indigo-400 bg-white border border-dashed border-indigo-200 rounded-2xl"><i class="fas fa-spinner fa-spin text-4xl mb-3"></i><p class="font-bold">Generating Report...</p></div>';
+            
+            setTimeout(() => {
+                if(type === 'stmt') { renderAccountStatement(paramVal, fDate, tDate); } 
+                else if (type === 'adv-stmt') { renderAdvanceStatement(paramVal, fDate, tDate); } 
+                else if (type === 'bs') { renderBalanceSheet(tDate); }
+                else if (type === 'ine') { renderIncomeExpense(fDate, tDate); }
+            }, 100);
+        }
+
+        function renderBalanceSheet(toDate) {
+            let assetsHtml = '', totalAssets = 0, liabHtml = '', totalLiab = 0, inc = 0, exp = 0;
+            const ledgerAsOf = appData.Ledger.filter(t => !toDate || t.Date <= toDate);
+
+            appData.Accounts.forEach(a => { let aBal = 0; ledgerAsOf.filter(t=>t.AccountID === a.ID).forEach(t => { aBal += (t.Type == 1 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); }); if (aBal !== 0) { assetsHtml += `<div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-600">${a.Name}</span><span class="font-bold text-slate-700">${fmtIdr(aBal)}</span></div>`; totalAssets += aBal; } });
+            appData.Categories.filter(c=>c.Type==='Asset').forEach(c => { let cBal = 0; ledgerAsOf.filter(t=>t.CategoryID === c.ID).forEach(t => { cBal += (t.Type == 1 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); }); if (cBal !== 0) { assetsHtml += `<div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-600">${c.Name} (Capitalized)</span><span class="font-bold text-slate-700">${fmtIdr(cBal)}</span></div>`; totalAssets += cBal; } });
+            
+            appData.Categories.filter(c=>c.Type==='Liability').forEach(c => { let cBal = 0; ledgerAsOf.filter(t=>t.CategoryID === c.ID).forEach(t => { cBal += (t.Type == 2 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); }); if (cBal !== 0) { liabHtml += `<div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-600">${c.Name} (Payables)</span><span class="font-bold text-slate-700">${fmtIdr(cBal)}</span></div>`; totalLiab += cBal; } });
+            
+            ledgerAsOf.forEach(t => { const cat = appData.Categories.find(c=>c.ID === t.CategoryID); if(cat?.Type === 'Income') inc += (t.Type == 2 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); if(cat?.Type === 'Expense') exp += (t.Type == 1 ? Math.abs(parseFloat(t.Amount)) : -Math.abs(parseFloat(t.Amount))); });
+            const surplus = inc - exp;
+            
+            document.getElementById('report-container').innerHTML = `
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="mb-4 flex items-center justify-between"><h3 class="font-black text-slate-700 uppercase tracking-wider text-sm"><i class="fas fa-balance-scale mr-2 text-indigo-500"></i> Balance Sheet</h3><span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">As of ${toDate || 'Today'}</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col">
+                        <div class="bg-rose-50 border-b p-4 text-rose-800 font-bold uppercase text-sm tracking-wider">Liabilities & Capital</div>
+                        <div class="p-6 space-y-2 flex-1">
+                            <h4 class="font-bold text-slate-400 text-[10px] uppercase tracking-wider mb-2">Advances & Payables</h4>${liabHtml || '<p class="text-xs text-slate-400 italic py-2">No active liabilities.</p>'}
+                            <h4 class="font-bold text-slate-400 text-[10px] uppercase tracking-wider mt-6 mb-2">General Fund (Capital)</h4>
+                            <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-600">Surplus / (Deficit) All-Time</span><span class="font-bold ${surplus>=0?'text-emerald-600':'text-rose-600'}">${fmtIdr(surplus)}</span></div>
+                        </div>
+                        <div class="bg-slate-50 border-t p-5 flex justify-between font-black text-lg text-slate-800"><span>Total</span><span>${fmtIdr(totalLiab + surplus)}</span></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col">
+                        <div class="bg-emerald-50 border-b p-4 text-emerald-800 font-bold uppercase text-sm tracking-wider">Assets</div>
+                        <div class="p-6 space-y-2 flex-1">
+                            <h4 class="font-bold text-slate-400 text-[10px] uppercase tracking-wider mb-2">Bank, Cash & Capitalized Assets</h4>${assetsHtml || '<p class="text-xs text-slate-400 italic py-2">No active assets.</p>'}
+                        </div>
+                        <div class="bg-slate-50 border-t p-5 flex justify-between font-black text-lg text-slate-800"><span>Total</span><span>${fmtIdr(totalAssets)}</span></div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderIncomeExpense(fromDate, toDate) {
+            let inc = {}, exp = {}, tInc = 0, tExp = 0;
+            const ledgerRange = appData.Ledger.filter(t => (!fromDate || t.Date >= fromDate) && (!toDate || t.Date <= toDate));
+            
+            ledgerRange.forEach(t => { const amt = Math.abs(parseFloat(t.Amount)) || 0; const cat = appData.Categories.find(c=>c.ID === t.CategoryID); if (cat) { if (cat.Type === 'Income') { inc[cat.Name] = (inc[cat.Name]||0) + (t.Type==2?amt:-amt); tInc += (t.Type==2?amt:-amt); } if (cat.Type === 'Expense') { exp[cat.Name] = (exp[cat.Name]||0) + (t.Type==1?amt:-amt); tExp += (t.Type==1?amt:-amt); } } });
+            
+            const renderRows = (obj) => Object.entries(obj).map(([k,v]) => `<div class="flex justify-between py-1.5 border-b border-slate-100 text-slate-600"><span>${k}</span><span class="font-medium">${fmtIdr(v)}</span></div>`).join('');
+            document.getElementById('report-container').innerHTML = `
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="mb-4 flex items-center justify-between"><h3 class="font-black text-slate-700 uppercase tracking-wider text-sm"><i class="fas fa-file-invoice-dollar mr-2 text-indigo-500"></i> Income & Expenditure</h3><span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">${fromDate||'Start'} to ${toDate||'Present'}</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col">
+                        <div class="bg-emerald-50 border-b p-4 text-emerald-800 font-bold uppercase text-sm tracking-wider"><i class="fas fa-arrow-down mr-2"></i>Income</div>
+                        <div class="p-6 space-y-2 flex-1">${renderRows(inc) || '<p class="text-xs text-slate-400 italic py-2">No recorded income in this period.</p>'}</div>
+                        <div class="bg-slate-50 border-t p-5 flex justify-between font-bold text-emerald-700"><span>Total Income</span><span>${fmtIdr(tInc)}</span></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col">
+                        <div class="bg-rose-50 border-b p-4 text-rose-800 font-bold uppercase text-sm tracking-wider"><i class="fas fa-arrow-up mr-2"></i>Expenditure</div>
+                        <div class="p-6 space-y-2 flex-1">${renderRows(exp) || '<p class="text-xs text-slate-400 italic py-2">No recorded expenditure in this period.</p>'}</div>
+                        <div class="bg-slate-50 border-t p-5 flex justify-between font-bold text-rose-700"><span>Total Expense</span><span>${fmtIdr(tExp)}</span></div>
+                    </div>
+                </div>
+                <div class="mt-6 p-6 bg-white border border-slate-200 rounded-2xl shadow-sm flex justify-between items-center"><span class="font-bold text-slate-500 uppercase tracking-wider text-sm">Surplus / (Deficit) For Period</span><span class="font-black text-2xl ${tInc-tExp >= 0 ? 'text-indigo-600' : 'text-rose-600'}">${fmtIdr(tInc-tExp)}</span></div>
+            </div>`;
+        }
+
+        function renderAccountStatement(accId, fromDate, toDate) {
+            const accObj = appData.Accounts.find(a=>a.ID===accId);
+            let opBal = 0, bal = 0, rowsHtml = '';
+            
+            // Calculate Opening Balance (all transactions BEFORE fromDate)
+            if (fromDate) {
+                appData.Ledger.filter(t => t.AccountID === accId && t.Date < fromDate).forEach(t => { opBal += (t.Type == 1 ? Math.abs(t.Amount) : -Math.abs(t.Amount)); });
+                bal = opBal;
+                rowsHtml += `<tr class="bg-indigo-50/50 text-xs font-bold border-b border-indigo-100"><td class="py-3 px-4">${fromDate}</td><td class="py-3 px-4 text-indigo-700" colspan="4">Opening Balance Brought Forward</td><td class="py-3 px-4 text-right text-indigo-700 text-sm">${fmtIdr(opBal)}</td></tr>`;
+            }
+
+            const accLedger = appData.Ledger.filter(t => t.AccountID === accId && (!fromDate || t.Date >= fromDate) && (!toDate || t.Date <= toDate));
+            const grpIds = [...new Set(accLedger.map(t => t.GroupID))];
+            const grps = grpIds.map(gId => appData.Ledger.filter(t => t.GroupID === gId)).sort((a,b) => new Date(a[0].Date) - new Date(b[0].Date));
+            
+            grps.forEach(grp => {
+                let dr = 0, cr = 0; let particularsArr = [];
+                grp.forEach(t => {
+                    if(t.AccountID === accId) { if(t.Type == 1) dr += Math.abs(parseFloat(t.Amount)); if(t.Type == 2) cr += Math.abs(parseFloat(t.Amount)); } 
+                    else { const cat = appData.Categories.find(c=>c.ID===t.CategoryID)?.Name; const acc = appData.Accounts.find(a=>a.ID===t.AccountID)?.Name; if(cat || acc) particularsArr.push(cat || acc); }
+                });
+                if (dr > 0 || cr > 0) {
+                    bal += (dr - cr); const ref = [...new Set(particularsArr)].join(' + ') || 'Journal Transfer';
+                    rowsHtml += `<tr class="border-b border-slate-100 hover:bg-slate-50 text-xs"><td class="py-3 px-4 whitespace-nowrap">${grp[0].Date}</td><td class="py-3 px-4 text-slate-700 font-medium truncate max-w-[200px]" title="${ref}">${ref}</td><td class="py-3 px-4 text-slate-400 truncate max-w-[150px]">${grp[0].Notes||''}</td><td class="py-3 px-4 text-right text-emerald-600 font-bold">${dr > 0 ? fmtIdr(dr) : '-'}</td><td class="py-3 px-4 text-right text-rose-600 font-bold">${cr > 0 ? fmtIdr(cr) : '-'}</td><td class="py-3 px-4 text-right font-bold text-slate-800 text-sm">${fmtIdr(bal)}</td></tr>`;
+                }
+            });
+            document.getElementById('report-container').innerHTML = `
+            <div class="mb-4 flex items-center justify-between"><h3 class="font-black text-slate-700 uppercase tracking-wider text-sm"><i class="fas fa-file-invoice mr-2 text-indigo-500"></i> Statement: ${accObj.Name}</h3><span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">Closing: ${fmtIdr(bal)}</span></div>
+            <div class="overflow-x-auto"><table class="w-full text-left min-w-[600px] bg-white rounded-xl shadow-sm border border-slate-100"><thead class="bg-slate-50 border-b border-slate-100 sticky top-0"><tr class="text-[10px] text-slate-500 uppercase tracking-wider"><th class="py-3 px-4">Date</th><th class="py-3 px-4">Particulars</th><th class="py-3 px-4">Narration</th><th class="py-3 px-4 text-right">Debit (In)</th><th class="py-3 px-4 text-right">Credit (Out)</th><th class="py-3 px-4 text-right">Balance</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="6" class="py-8 text-center text-slate-400">No transactions recorded in this period.</td></tr>'}</tbody></table></div>`;
+        }
+
+        function renderAdvanceStatement(memId, fromDate, toDate) {
+            const memObj = appData.Members.find(m=>m.ID===memId);
+            let opBal = 0, bal = 0, rowsHtml = '';
+            
+            if (fromDate) {
+                appData.Ledger.filter(t => t.MemberID === memId && t.Date < fromDate && appData.Categories.find(c=>c.ID===t.CategoryID)?.Type === 'Liability').forEach(t => { opBal += (t.Type == 2 ? Math.abs(t.Amount) : -Math.abs(t.Amount)); });
+                bal = opBal;
+                rowsHtml += `<tr class="bg-amber-50/50 text-xs font-bold border-b border-amber-100"><td class="py-3 px-4">${fromDate}</td><td class="py-3 px-4 text-amber-700" colspan="3">Opening Balance Brought Forward</td><td class="py-3 px-4 text-right text-amber-700 text-sm">${fmtIdr(opBal)}</td></tr>`;
+            }
+
+            appData.Ledger.filter(t => t.MemberID === memId && (!fromDate || t.Date >= fromDate) && (!toDate || t.Date <= toDate) && appData.Categories.find(c=>c.ID===t.CategoryID)?.Type === 'Liability').sort((a,b) => new Date(a.Date) - new Date(b.Date)).forEach(t => {
+                const amt = Math.abs(parseFloat(t.Amount)) || 0; let advanceGenerated = 0, advanceRepaid = 0;
+                if(t.Type == 2) { bal += amt; advanceGenerated = amt; } if(t.Type == 1) { bal -= amt; advanceRepaid = amt; }
+                const ev = appData.Events.find(e=>e.ID===t.EventID)?.Name || '', ref = [ev, t.Notes].filter(x=>x).join(' | ');
+                rowsHtml += `<tr class="border-b border-slate-100 hover:bg-slate-50 text-xs"><td class="py-3 px-4 whitespace-nowrap">${t.Date}</td><td class="py-3 px-4 text-slate-600 truncate max-w-xs" title="${ref}">${ref}</td><td class="py-3 px-4 text-right text-amber-600 font-bold">${advanceGenerated !== 0 ? fmtIdr(advanceGenerated) : '-'}</td><td class="py-3 px-4 text-right text-emerald-600 font-bold">${advanceRepaid !== 0 ? fmtIdr(advanceRepaid) : '-'}</td><td class="py-3 px-4 text-right font-bold text-slate-700">${fmtIdr(bal)}</td></tr>`;
+            });
+            
+            document.getElementById('report-container').innerHTML = `
+            <div class="mb-4 flex items-center justify-between"><h3 class="font-black text-slate-700 uppercase tracking-wider text-sm"><i class="fas fa-handshake mr-2 text-amber-500"></i> Advances: ${memObj.Name}</h3><span class="bg-amber-50 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">Closing Payable: ${fmtIdr(bal)}</span></div>
+            <div class="overflow-x-auto"><table class="w-full text-left min-w-[600px] bg-white rounded-xl shadow-sm border border-slate-100"><thead class="bg-slate-50 border-b border-slate-100 sticky top-0"><tr class="text-[10px] text-slate-500 uppercase tracking-wider"><th class="py-3 px-4">Date</th><th class="py-3 px-4">Particulars</th><th class="py-3 px-4 text-right">Advance Issued (Cr)</th><th class="py-3 px-4 text-right">Set-off / Repaid (Dr)</th><th class="py-3 px-4 text-right">Net Balance</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="5" class="py-8 text-center text-slate-400">No liability/advance records in this period.</td></tr>'}</tbody></table></div>`;
+        }
+        
+        // --- MASTER DATA & AUDIT ---
+        function renderMasterData() {
+            document.getElementById('list-accounts').innerHTML = appData.Accounts.map(a => `<li class="py-2 text-sm flex justify-between"><span>${a.Name}</span><span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded">${a.Type==2?'Bank':'Cash'}</span></li>`).join('');
+            document.getElementById('list-categories').innerHTML = appData.Categories.map(c => `<li class="py-2 text-sm flex justify-between"><span>${c.Name}</span><span class="text-[10px] ${c.Type==='Income'?'bg-emerald-50 text-emerald-600':(c.Type==='Expense'?'bg-rose-50 text-rose-600':(c.Type==='Liability'?'bg-amber-50 text-amber-600':'bg-indigo-50 text-indigo-600'))} px-2 py-0.5 rounded font-bold">${c.Type}</span></li>`).join('');
+            document.getElementById('list-events').innerHTML = appData.Events.map(e => `<li class="py-2 text-sm flex justify-between"><span>${e.Name}</span><span class="text-[10px] text-slate-400 font-mono">${e.Date}</span></li>`).join('');
+            if (document.getElementById('list-configs')) { document.getElementById('list-configs').innerHTML = (appData.MemberConfig || []).map(c => `<li class="py-2 text-sm flex justify-between"><span>${c.Label}</span><span class="text-[10px] text-slate-400 font-mono">${c.Type}</span></li>`).join(''); }
+        }
+        function renderAudit() {
+            const tbody = document.getElementById('audit-tbody'); if (!tbody) return;
+            tbody.innerHTML = [...(appData.AuditLog || [])].reverse().map((a) => { const b64Details = btoa(unescape(encodeURIComponent(a.Details || '{}'))); return `<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="showDetailsModal('Audit Record: ${a.Action}', '${b64Details}')"><td class="px-6 py-4 text-xs text-slate-500">${new Date(a.Timestamp).toLocaleString()}</td><td class="px-6 py-4 font-bold text-indigo-600 text-xs">${a.Action}</td><td class="px-6 py-4 text-slate-600 text-xs">${a.User}</td><td class="px-6 py-4 text-slate-600 text-xs">${a.TableName}</td><td class="px-6 py-4 text-slate-400 text-xs font-mono">${a.RecordID} <i class="fas fa-search ml-2 text-slate-300"></i></td></tr>`; }).join('') || `<tr><td colspan="5" class="text-center py-8 text-slate-400">Audit log empty.</td></tr>`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => loadAllData(false));
+    </script>
+</body>
+</html>
